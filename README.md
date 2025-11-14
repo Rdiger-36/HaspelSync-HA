@@ -1,5 +1,5 @@
 To use this Add On you need HACS.
-For installation just copy the repo url and add a custom repositorie in HACS.
+For installation just copy the repo url and add a custom repository in HACS.
 Search for Bambu AMS Monitoring, and install this Integration.
 
 1. Go to Settings -> Devices
