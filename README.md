@@ -1,5 +1,6 @@
 To use this Add On you need HACS.
-For installation just copy the bambu_ams_monitoring directory in your Home Assistant custom_components directory.
+For installation just copy the repo url and add a custom repositorie in HACS.
+Search for Bambu AMS Monitoring, and install this Integration.
 
 1. Go to Settings -> Devices
 2. Add new integration: Bambu AMS Monitoring Integration
@@ -12,3 +13,5 @@ For installation just copy the bambu_ams_monitoring directory in your Home Assis
 
 4. Select your printer
 5. Enjoy your toogle switch
+
+This Add On depends on a working https://github.com/Rdiger-36/bambulab-ams-spoolman-filamentstatus environment
