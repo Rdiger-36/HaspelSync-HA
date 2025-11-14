@@ -15,3 +15,4 @@ Search for Bambu AMS Monitoring, and install this Integration.
 5. Enjoy your toogle switch
 
 This Add On depends on a working https://github.com/Rdiger-36/bambulab-ams-spoolman-filamentstatus environment
+Please note that this is in Development and only works with the actual dev build from it
