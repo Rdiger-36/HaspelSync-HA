@@ -1,0 +1,8 @@
+{
+  "name": "Bambu AMS Monitoring",
+  "content_in_root": false,
+  "render_readme": true,
+  "domains": ["sensor", "switch"],
+  "iot_class": "local_polling",
+  "country": []
+}
