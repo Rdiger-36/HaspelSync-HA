@@ -1,0 +1,53 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Bambu AMS Monitoring – Einrichtung",
+        "description": "Gib die Basis-URL deines Bambu AMS Monitoring Backends ein.",
+        "data": {
+          "base_url": "Basis-URL"
+        }
+      },
+      "select_printers": {
+        "title": "Drucker auswählen",
+        "description": "Wähle die Drucker aus, deren Monitoring-Status du steuern möchtest.\n\n{backend_dup_fixed}",
+        "data": {
+          "printers": "Drucker"
+        }
+      },
+      "fix_duplicates": {
+        "title": "Automatische Korrektur doppelter Drucker-IDs",
+        "description": "Es wurden doppelte Drucker-IDs erkannt und automatisch korrigiert:\n\n{duplicate_list}\n\nBitte überprüfe die Änderungen."
+      }
+
+    },
+    "error": {
+      "cannot_connect": "Verbindung zum Backend fehlgeschlagen. Bitte überprüfe die URL.",
+      "printer_already_configured": "Einer oder mehrere ausgewählte Drucker sind bereits in einer anderen Instanz eingerichtet."
+    },
+    "abort": {
+      "already_configured": "Dieses Backend wurde bereits eingerichtet.",
+      "printer_already_configured": "Einer oder mehrere ausgewählte Drucker sind bereits in einer anderen Instanz eingerichtet."
+    }
+  },
+
+  "options": {
+    "step": {
+      "edit_printers": {
+        "title": "Druckerauswahl bearbeiten",
+        "description": "Wähle die Drucker aus, die diese Integration überwachen soll.",
+        "data": {
+          "printers": "Drucker"
+        }
+      }
+    }
+  },
+
+  "notif": {
+    "duplicate": "Eine doppelte Drucker-ID wurde erkannt ('{printer_id}'). Eine neue eindeutige ID ('{unique_id}') wurde vergeben."
+  },
+
+  "title": {
+    "duplicate": "Bambu AMS Monitoring – Doppelte Drucker-ID"
+  }
+}

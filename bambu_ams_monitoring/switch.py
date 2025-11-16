@@ -44,13 +44,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
         if suffix_applied:
             message = translation.async_get_localized_string(
                 hass,
-                f"{DOMAIN}.notif.{NOTIF_DUPLICATE}",
+                f"component.{DOMAIN}.notif.{NOTIF_DUPLICATE}",
                 {"printer_id": printer_id, "unique_id": unique_id}
             )
-
+            
             title = translation.async_get_localized_string(
                 hass,
-                f"{DOMAIN}.title.{NOTIF_DUPLICATE}",
+                f"component.{DOMAIN}.title.{NOTIF_DUPLICATE}"
             )
 
             hass.components.persistent_notification.create(

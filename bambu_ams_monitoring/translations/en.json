@@ -1,0 +1,53 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Bambu AMS Monitoring – Setup",
+        "description": "Enter the base URL of your Bambu AMS Monitoring backend.",
+        "data": {
+          "base_url": "Base URL"
+        }
+      },
+      "select_printers": {
+        "title": "Select Printers",
+        "description": "Select the printers whose monitoring state you want to control.\n\n{backend_dup_fixed}",
+        "data": {
+          "printers": "Printers"
+        }
+      },
+      "fix_duplicates": {
+        "title": "Automatic duplicate printer ID correction",
+        "description": "Duplicate printer IDs were detected and automatically corrected:\n\n{duplicate_list}\n\nPlease review the changes."
+      }
+
+    },
+    "error": {
+      "cannot_connect": "Could not connect to the backend. Please check the URL.",
+      "printer_already_configured": "One or more selected printers are already configured in another integration instance."
+    },
+    "abort": {
+      "already_configured": "This backend is already configured.",
+      "printer_already_configured": "One or more selected printers are already configured in another integration instance."
+    }
+  },
+
+  "options": {
+    "step": {
+      "edit_printers": {
+        "title": "Edit Printers",
+        "description": "Select the printers this integration should monitor.",
+        "data": {
+          "printers": "Printers"
+        }
+      }
+    }
+  },
+
+  "notif": {
+    "duplicate": "A duplicate printer ID was detected ('{printer_id}'). A new unique ID ('{unique_id}') was assigned."
+  },
+
+  "title": {
+    "duplicate": "Bambu AMS Monitoring – Duplicate Printer ID"
+  }
+}
