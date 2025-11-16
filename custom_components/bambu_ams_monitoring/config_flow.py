@@ -34,13 +34,14 @@ class AmsManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data_schema=vol.Schema({
                     vol.Required(CONF_BASE_URL): str
                 }),
+                description="Enter the base URL of your Bambu AMS Monitoring backend:"
                 errors={"base": "cannot_connect"},
             )
 
         self._base_url = base_url
         self._printers_raw = printers
 
-        return await self.async_step_select_printers()
+        return await self.async_step_select_printers() 
 
 
     async def async_step_select_printers(self, user_input=None):
@@ -56,7 +57,8 @@ class AmsManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 step_id="select_printers",
                 data_schema=vol.Schema({
                     vol.Required(CONF_PRINTERS): cv.multi_select(printer_names)
-                })
+                }),
+                description="Select the printers whose monitoring state you want to control:"
             )
 
         selected = user_input[CONF_PRINTERS]
