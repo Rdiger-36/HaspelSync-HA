@@ -3,7 +3,12 @@ import voluptuous as vol
 from homeassistant import config_entries
 import homeassistant.helpers.config_validation as cv
 
-from .const import DOMAIN, CONF_BASE_URL, CONF_PRINTERS
+from .const import (
+    DOMAIN,
+    CONF_BASE_URL,
+    CONF_PRINTERS,
+    CONF_ERR_CANNOT_CONNECT
+)
 
 
 class AmsManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -12,6 +17,7 @@ class AmsManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         """Step 1: enter base URL."""
         if user_input is None:
+            # Uses translations: config.step.user.*
             return self.async_show_form(
                 step_id="user",
                 data_schema=vol.Schema({
@@ -34,31 +40,28 @@ class AmsManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data_schema=vol.Schema({
                     vol.Required(CONF_BASE_URL): str
                 }),
-                description="Enter the base URL of your Bambu AMS Monitoring backend:"
-                errors={"base": "cannot_connect"},
+                errors={"base": CONF_ERR_CANNOT_CONNECT},
             )
 
         self._base_url = base_url
         self._printers_raw = printers
 
-        return await self.async_step_select_printers() 
-
+        return await self.async_step_select_printers()
 
     async def async_step_select_printers(self, user_input=None):
         """Step 2: printer selection."""
-
         printer_names = {
             p["id"]: f"{p['name']} ({p['id']})"
             for p in self._printers_raw
         }
 
         if user_input is None:
+            # Uses translations: config.step.select_printers.*
             return self.async_show_form(
                 step_id="select_printers",
                 data_schema=vol.Schema({
                     vol.Required(CONF_PRINTERS): cv.multi_select(printer_names)
-                }),
-                description="Select the printers whose monitoring state you want to control:"
+                })
             )
 
         selected = user_input[CONF_PRINTERS]

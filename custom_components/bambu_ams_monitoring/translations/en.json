@@ -1,0 +1,34 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Bambu AMS Monitoring – Setup",
+        "description": "Enter the base URL of your Bambu AMS Monitoring backend.",
+        "data": {
+          "base_url": "Base URL"
+        }
+      },
+      "select_printers": {
+        "title": "Select Printers",
+        "description": "Select the printers whose monitoring state you want to control.",
+        "data": {
+          "printers": "Printers"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to the backend. Please check the URL."
+    },
+    "abort": {
+      "already_configured": "This backend is already configured."
+    }
+  },
+
+  "notif": {
+    "duplicate": "A duplicate printer ID was detected ('{printer_id}'). The entity has been assigned the unique ID '{unique_id}'."
+  },
+
+  "title": {
+    "duplicate": "Bambu AMS Monitoring – Duplicate Printer ID"
+  }
+}

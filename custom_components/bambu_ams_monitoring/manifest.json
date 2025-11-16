@@ -1,9 +1,9 @@
 {
   "domain": "bambu_ams_monitoring",
   "name": "Bambu AMS Monitoring Integration",
-  "version": "1.0.0",
-  "documentation": "https://github.com/Rdiger-36/bambulab-ams-spoolman-filamentstatus",
-  "issue_tracker": "https://github.com/Rdiger-36/bambulab-ams-spoolman-filamentstatus/issues",
+  "version": "1.0.2",
+  "documentation": "https://github.com/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus",
+  "issue_tracker": "https://github.com/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus/issues",
   "dependencies": [],
   "requirements": [],
   "codeowners": ["@Rdiger-36"],
