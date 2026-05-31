@@ -17,6 +17,11 @@ class AmsManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    @staticmethod
+    def async_get_options_flow(config_entry):
+        from .options_flow import AmsManagerOptionsFlowHandler
+        return AmsManagerOptionsFlowHandler(config_entry)
+
     def __init__(self):
         self._base_url = None
         self._printers_raw = None

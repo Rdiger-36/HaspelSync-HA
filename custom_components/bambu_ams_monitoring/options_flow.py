@@ -16,59 +16,59 @@ class AmsManagerOptionsFlowHandler(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry):
         self.config_entry = config_entry
-        self._printers_raw = None
-
+        self._printers_raw = []
 
     async def async_step_init(self, user_input=None):
-        """Initial step: choose whether to change base URL or printers."""
         return await self.async_step_edit_printers()
 
-
-    # -------------------------------------------------------------------------
-    # PRINTER EDITING
-    # -------------------------------------------------------------------------
     async def async_step_edit_printers(self, user_input=None):
         errors = {}
 
         base_url = self.config_entry.data.get(CONF_BASE_URL)
 
-        # Fetch printers again from backend
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(f"{base_url}/api/printers") as resp:
                     if resp.status != 200:
                         raise Exception("Backend error")
-                    printers = await resp.json()
+                    self._printers_raw = await resp.json()
         except Exception:
             errors["base"] = "cannot_connect"
-            printers = []
+            self._printers_raw = []
 
-        # Build printer list
         printer_map = {
             p["id"]: f"{p['name']} ({p['id']})"
-            for p in printers
+            for p in self._printers_raw
         }
 
-        # First run
+        currently_selected = [
+            p["id"] for p in self.config_entry.data.get(CONF_PRINTERS, [])
+        ]
+
         if user_input is None:
             return self.async_show_form(
                 step_id="edit_printers",
                 data_schema=vol.Schema({
-                    vol.Required(
-                        CONF_PRINTERS,
-                        default=[p["id"] for p in self.config_entry.data.get(CONF_PRINTERS, [])]
-                    ): cv.multi_select(printer_map)
+                    vol.Required(CONF_PRINTERS, default=currently_selected): cv.multi_select(printer_map)
                 }),
                 errors=errors,
             )
 
-        # Save new configuration
-        selected = user_input[CONF_PRINTERS]
+        selected_ids = user_input[CONF_PRINTERS]
+        name_lookup = {p["id"]: p["name"] for p in self._printers_raw}
 
+        # Preserve names for IDs that are still known; fall back to ID as name
+        printers_final = [
+            {"id": pid, "name": name_lookup.get(pid, pid)}
+            for pid in selected_ids
+        ]
+
+        # Options flow must write back into entry.data via a reload listener
+        # We store the updated printer list in options; __init__.py reloads the entry.
         return self.async_create_entry(
             title="",
             data={
-                CONF_PRINTERS: selected,
                 CONF_BASE_URL: base_url,
-            }
+                CONF_PRINTERS: printers_final,
+            },
         )

@@ -43,11 +43,4 @@
     }
   },
 
-  "notif": {
-    "duplicate": "Eine doppelte Drucker-ID wurde erkannt ('{printer_id}'). Eine neue eindeutige ID ('{unique_id}') wurde vergeben."
-  },
-
-  "title": {
-    "duplicate": "Bambu AMS Monitoring – Doppelte Drucker-ID"
-  }
 }

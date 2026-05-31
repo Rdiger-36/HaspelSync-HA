@@ -43,11 +43,4 @@
     }
   },
 
-  "notif": {
-    "duplicate": "A duplicate printer ID was detected ('{printer_id}'). A new unique ID ('{unique_id}') was assigned."
-  },
-
-  "title": {
-    "duplicate": "Bambu AMS Monitoring – Duplicate Printer ID"
-  }
 }
