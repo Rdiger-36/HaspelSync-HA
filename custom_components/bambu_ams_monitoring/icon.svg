@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e1e1e"/>
+      <stop offset="100%" style="stop-color:#111111"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="256" height="256" rx="36" fill="url(#bgGrad)"/>
+
+  <!-- ── AMS UNIT BODY ── -->
+  <rect x="24" y="54" width="208" height="142" rx="16" fill="#1a1a1a" stroke="#00c853" stroke-width="2.5" stroke-opacity="0.6"/>
+
+  <!-- AMS top label bar -->
+  <rect x="24" y="54" width="208" height="26" rx="16" fill="#00c853" opacity="0.08"/>
+  <rect x="24" y="68" width="208" height="12" fill="#00c853" opacity="0.08"/>
+  <!-- "AMS" label dots -->
+  <circle cx="104" cy="67" r="3.5" fill="#00c853" opacity="0.5"/>
+  <circle cx="118" cy="67" r="3.5" fill="#00c853" opacity="0.5"/>
+  <circle cx="132" cy="67" r="3.5" fill="#00c853" opacity="0.5"/>
+  <circle cx="146" cy="67" r="3.5" fill="#00c853" opacity="0.5"/>
+
+  <!-- ── 4 SPOOL SLOTS ── -->
+  <!-- Slot backgrounds -->
+  <rect x="34"  y="88" width="44" height="96" rx="10" fill="#141414" stroke="#333" stroke-width="1.5"/>
+  <rect x="86"  y="88" width="44" height="96" rx="10" fill="#141414" stroke="#333" stroke-width="1.5"/>
+  <rect x="138" y="88" width="44" height="96" rx="10" fill="#141414" stroke="#333" stroke-width="1.5"/>
+  <rect x="190" y="88" width="42" height="96" rx="10" fill="#141414" stroke="#333" stroke-width="1.5"/>
+
+  <!-- Spool 1 – standard filament color -->
+  <circle cx="56"  cy="136" r="30" fill="none" stroke="#aaaaaa" stroke-width="9" stroke-opacity="0.7"/>
+  <circle cx="56"  cy="136" r="10" fill="#222"/>
+  <circle cx="56"  cy="136" r="4"  fill="#aaaaaa" opacity="0.6"/>
+
+  <!-- Spool 2 -->
+  <circle cx="108" cy="136" r="30" fill="none" stroke="#aaaaaa" stroke-width="9" stroke-opacity="0.7"/>
+  <circle cx="108" cy="136" r="10" fill="#222"/>
+  <circle cx="108" cy="136" r="4"  fill="#aaaaaa" opacity="0.6"/>
+
+  <!-- Spool 3 -->
+  <circle cx="160" cy="136" r="30" fill="none" stroke="#aaaaaa" stroke-width="9" stroke-opacity="0.7"/>
+  <circle cx="160" cy="136" r="10" fill="#222"/>
+  <circle cx="160" cy="136" r="4"  fill="#aaaaaa" opacity="0.6"/>
+
+  <!-- Spool 4 (active – Bambu green, being monitored) -->
+  <circle cx="211" cy="136" r="30" fill="none" stroke="#00c853" stroke-width="9" stroke-opacity="0.9" filter="url(#glow)"/>
+  <circle cx="211" cy="136" r="10" fill="#222"/>
+  <circle cx="211" cy="136" r="4"  fill="#00c853" opacity="0.9" filter="url(#glow)"/>
+
+  <!-- ── MONITORING BAR (bottom) ── -->
+  <rect x="24" y="206" width="208" height="34" rx="16" fill="#111"/>
+  <rect x="24" y="196" width="208" height="22" rx="0" fill="#111"/>
+  <rect x="24" y="196" width="208" height="34" rx="16" fill="#111" stroke="#00c853" stroke-width="2.5" stroke-opacity="0.6"/>
+
+  <!-- Pulse / heartbeat line -->
+  <polyline
+    points="40,213 68,213 78,200 88,226 98,208 108,213 186,213"
+    fill="none" stroke="#00c853" stroke-width="2.5"
+    stroke-linecap="round" stroke-linejoin="round"
+    filter="url(#glow)" opacity="0.95"/>
+
+  <!-- Status dot -->
+  <circle cx="210" cy="213" r="8" fill="#00c853" filter="url(#glow)"/>
+  <circle cx="207" cy="210" r="3" fill="white" opacity="0.25"/>
+
+</svg>
