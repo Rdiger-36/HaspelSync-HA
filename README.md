@@ -1,6 +1,30 @@
-# Bambu AMS Monitoring — Home Assistant Integration
+<p align="center">
+  <img src="custom_components/bambu_ams_monitoring/icon.png" width="120" alt="Bambu AMS Monitoring icon" />
+</p>
 
-A custom [Home Assistant](https://www.home-assistant.io/) integration to monitor and control the filament monitoring of your **Bambu Lab 3D printer** via the [bambulab-ams-spoolman-filamentstatus](https://github.com/Rdiger-36/bambulab-ams-spoolman-filamentstatus) backend.
+<h1 align="center">Bambu AMS Monitoring</h1>
+
+<p align="center">
+  A custom Home Assistant integration to monitor and control your Bambu Lab AMS filament status.<br/>
+  Connects to the <a href="https://github.com/Rdiger-36/bambulab-ams-spoolman-filamentstatus">bambulab-ams-spoolman-filamentstatus</a> backend with a simple toggle switch per printer.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/github/v/release/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus?style=flat-square&label=version&color=blue" alt="version" />
+  <img src="https://img.shields.io/badge/HACS-Custom-orange?style=flat-square&logo=home-assistant&logoColor=white" alt="HACS" />
+  <img src="https://img.shields.io/badge/Home%20Assistant-compatible-41BDF5?style=flat-square&logo=home-assistant&logoColor=white" alt="Home Assistant" />
+  <img src="https://img.shields.io/badge/license-GPL--3.0-green?style=flat-square" alt="license" />
+  <img src="https://img.shields.io/badge/maintained-yes-brightgreen?style=flat-square" alt="maintained" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/github/stars/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus?style=flat-square&color=yellow" alt="stars" />
+  <img src="https://img.shields.io/github/forks/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus?style=flat-square&color=orange" alt="forks" />
+  <img src="https://img.shields.io/github/issues/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus?style=flat-square" alt="open issues" />
+  <img src="https://img.shields.io/github/last-commit/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus?style=flat-square&label=last%20commit" alt="last commit" />
+</p>
+
+---
 
 > **Note:** This integration depends on a working [bambulab-ams-spoolman-filamentstatus](https://github.com/Rdiger-36/bambulab-ams-spoolman-filamentstatus) environment.
 
@@ -74,7 +98,3 @@ The integration reloads automatically after saving. If not, restart Home Assista
 
 * [bambulab-ams-spoolman-filamentstatus](https://github.com/Rdiger-36/bambulab-ams-spoolman-filamentstatus) — The backend this integration depends on
 * [Spoolman](https://github.com/Donkie/Spoolman) — Filament inventory management
-
-## Version
-
-Current version: **1.0.0** — See the [Releases](https://github.com/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus/releases) page for the full changelog.
