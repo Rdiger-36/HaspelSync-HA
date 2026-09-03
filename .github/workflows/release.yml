@@ -71,8 +71,20 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PRERELEASE: ${{ steps.version.outputs.prerelease }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
+
+          # The releases of this repository are titled "Version X.Y.Z", not
+          # after the tag. A release named v1.0.2 among a list of Version 1.0.1
+          # and Version 1.0.0 reads as a different kind of entry. A pre-release
+          # carries DEV, the way the earlier ones did, in brackets rather than
+          # behind a dash, which the repository's punctuation rule excludes.
+          if [[ "${PRERELEASE}" == "true" ]]; then
+            TITLE="Version ${VERSION} (DEV)"
+          else
+            TITLE="Version ${VERSION}"
+          fi
 
           # No archive is attached. HACS installs a standard custom repository
           # by copying custom_components/bambu_ams_monitoring out of the tag,
@@ -84,12 +96,13 @@ jobs:
           # rather than fail on the second attempt.
           if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
             gh release edit "${GITHUB_REF_NAME}" \
+              --title "${TITLE}" \
               --prerelease="${PRERELEASE}" \
               --latest="${LATEST}"
             echo "Updated the existing release ${GITHUB_REF_NAME}."
           else
             gh release create "${GITHUB_REF_NAME}" \
-              --title "${GITHUB_REF_NAME}" \
+              --title "${TITLE}" \
               --generate-notes \
               --prerelease="${PRERELEASE}" \
               --latest="${LATEST}"
