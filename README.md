@@ -21,7 +21,6 @@
   <img src="https://img.shields.io/github/stars/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus?style=flat-square&color=yellow" alt="stars" />
   <img src="https://img.shields.io/github/forks/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus?style=flat-square&color=orange" alt="forks" />
   <img src="https://img.shields.io/github/issues/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus?style=flat-square" alt="open issues" />
-  <img src="https://img.shields.io/github/downloads/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus/total?style=flat-square&label=downloads&color=blue" alt="total downloads" />
   <img src="https://img.shields.io/github/last-commit/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus?style=flat-square&label=last%20commit" alt="last commit" />
 </p>
 
