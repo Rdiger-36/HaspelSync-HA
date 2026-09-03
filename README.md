@@ -31,8 +31,11 @@
 ## Features
 
 * Toggle monitoring per printer directly from Home Assistant
+* One sensor per AMS slot: filament, material, vendor, colour, remaining weight and the Spoolman link
+* Humidity, temperature and drying state per AMS unit
+* Print state and progress, plus connection sensors for the printer and for Spoolman
 * Auto-detects all available printers from your backend
-* Availability tracking: the entity shows as unavailable if the backend is unreachable
+* Availability tracking: the entities show as unavailable if the backend is unreachable
 * Multi-printer support: add multiple printers in one integration instance, and the same printer in several instances
 * Fully translatable, English and German included
 
@@ -76,11 +79,46 @@ After setup, you can edit the printer selection at any time:
 
 ## Entities
 
-For each configured printer, the integration creates a switch entity:
+Every printer becomes one device. All of its entities are polled together every 30 seconds, which is the pace the backend itself works at.
+
+Per printer:
 
 | Entity | Description |
 |---|---|
 | `switch.ams_monitoring_<printer_name>` | Enables or disables filament monitoring for this printer |
+| `sensor.<printer>_print_state` | The G-code state, with job name, layer and total layers as attributes |
+| `sensor.<printer>_print_progress` | The print progress in percent, derived from the layer count |
+| `sensor.<printer>_last_ams_update` | When the backend last processed AMS data of this printer |
+| `sensor.<printer>_last_printer_message` | When the last MQTT message arrived, diagnostic |
+| `sensor.<printer>_backend_version` | The backend version, with mode and Spoolman URL as attributes, diagnostic |
+| `binary_sensor.<printer>_printer_connection` | Whether the backend holds the MQTT connection, with the exact state as an attribute |
+| `binary_sensor.<printer>_spoolman_connection` | Whether the backend reaches Spoolman, diagnostic |
+| `binary_sensor.<printer>_needs_attention` | On when any slot reports an error or waits for an action, with the slot list as attributes |
+
+Per AMS unit, for example A:
+
+| Entity | Description |
+|---|---|
+| `sensor.<printer>_ams_a_humidity` | Humidity in percent |
+| `sensor.<printer>_ams_a_humidity_level` | The level 1 to 5 the AMS shows as drop icons, diagnostic |
+| `sensor.<printer>_ams_a_temperature` | Temperature inside the unit |
+| `binary_sensor.<printer>_ams_a_drying` | On while the unit is drying, with target temperature and duration as attributes |
+| `sensor.<printer>_ams_a_drying_remaining` | Minutes of drying left |
+
+The last two exist only on a unit with a dryer, an AMS 2 Pro or an AMS HT. An AMS Lite reports no readings at all, so it has none of these entities while its slots are still there.
+
+Per AMS slot, for example A1, and for the external spool holder:
+
+| Entity | Description |
+|---|---|
+| `sensor.<printer>_slot_a1` | The filament in the slot, with material, vendor, colour, weights, spool ID and slot state as attributes |
+| `sensor.<printer>_slot_a1_remaining_weight` | Grams left, from Spoolman where the slot is linked |
+| `sensor.<printer>_slot_a1_remaining` | The same figure in percent |
+| `binary_sensor.<printer>_slot_a1_problem` | On when the backend reports an error for the slot or the spool is archived |
+| `binary_sensor.<printer>_slot_a1_action_required` | On when a spool has to be created, merged or assigned in the backend Web UI |
+| `binary_sensor.<printer>_slot_a1_linked_to_spoolman` | Whether the slot is linked by RFID tag or by a manual assignment, diagnostic |
+
+Slots and AMS units appear as soon as the backend reports them, so a unit plugged in later brings its entities with it without a reload.
 
 The switch reflects the actual monitoring state from the backend and updates automatically.
 
@@ -91,7 +129,7 @@ The same printer may be configured in more than one integration instance, and th
 **Config flow fails to load**
 Make sure the backend is reachable at the URL you entered and responds at `/api/printers`.
 
-**Entity shows as unavailable**
+**Entities show as unavailable**
 Either the backend is not reachable, or it does not know the printer ID the entity was configured with. Check that the service is running and that the URL and port are correct:
 
 ```
@@ -99,6 +137,13 @@ curl http://<backend>:4000/api/printers
 ```
 
 The IDs in that answer are the ones the backend accepts. An ID left over from an earlier version of this integration is corrected automatically when the integration loads, so a reload of the integration is worth trying before anything else.
+
+**Slot or AMS entities are missing**
+The backend reports slots only after its first AMS update, and it reports environment readings only for an AMS that has them. Turn monitoring on, wait for one update interval, and check what the backend answers:
+
+```
+curl http://<backend>:4000/api/spools/<printer-id>
+```
 
 **Changes after editing printers do not take effect**
 The integration reloads automatically after saving. If not, restart Home Assistant manually.

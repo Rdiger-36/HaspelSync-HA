@@ -20,7 +20,6 @@
       "cannot_connect": "Could not connect to the backend. Please check the URL."
     }
   },
-
   "options": {
     "step": {
       "edit_printers": {
@@ -33,6 +32,69 @@
     },
     "error": {
       "cannot_connect": "Could not connect to the backend. The printers currently configured are still selectable."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "print_state": {
+        "name": "Print state"
+      },
+      "print_progress": {
+        "name": "Print progress"
+      },
+      "last_ams_update": {
+        "name": "Last AMS update"
+      },
+      "last_printer_message": {
+        "name": "Last printer message"
+      },
+      "backend_version": {
+        "name": "Backend version"
+      },
+      "ams_humidity": {
+        "name": "AMS {ams} humidity"
+      },
+      "ams_humidity_level": {
+        "name": "AMS {ams} humidity level"
+      },
+      "ams_temperature": {
+        "name": "AMS {ams} temperature"
+      },
+      "ams_drying_remaining": {
+        "name": "AMS {ams} drying remaining"
+      },
+      "slot": {
+        "name": "Slot {slot}"
+      },
+      "slot_remaining_weight": {
+        "name": "Slot {slot} remaining weight"
+      },
+      "slot_remaining_percentage": {
+        "name": "Slot {slot} remaining"
+      }
+    },
+    "binary_sensor": {
+      "mqtt_connected": {
+        "name": "Printer connection"
+      },
+      "spoolman_connected": {
+        "name": "Spoolman connection"
+      },
+      "attention": {
+        "name": "Needs attention"
+      },
+      "ams_drying": {
+        "name": "AMS {ams} drying"
+      },
+      "slot_problem": {
+        "name": "Slot {slot} problem"
+      },
+      "slot_action_required": {
+        "name": "Slot {slot} action required"
+      },
+      "slot_linked": {
+        "name": "Slot {slot} linked to Spoolman"
+      }
     }
   }
 }
