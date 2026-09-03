@@ -1,0 +1,97 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  # The release step writes to the repository's releases.
+  contents: write
+
+jobs:
+  release:
+    name: Publish the GitHub release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          # Release notes are generated from the history, which a shallow
+          # checkout does not carry.
+          fetch-depth: 0
+
+      - name: Read the version
+        id: version
+        run: |
+          set -euo pipefail
+
+          # Only a tag may publish. A manual run sits on a branch, where
+          # GITHUB_REF_NAME is the branch name, and a release named after a
+          # branch would point users at something that is not a version.
+          if [[ "${GITHUB_REF_TYPE}" != "tag" ]]; then
+            echo "::error::This workflow publishes from a tag only (got ${GITHUB_REF_TYPE} '${GITHUB_REF_NAME}'). Push a vX.Y.Z tag instead."
+            exit 1
+          fi
+
+          # vX.Y.Z is the scheme. The older tags of this repository read
+          # v.X.Y.Z, so a leading dot is accepted rather than failing a release
+          # over a habit, but it is not what new tags should look like.
+          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${VERSION#.}"
+
+          if [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-.+)?$ ]]; then
+            echo "::error::Tag '${GITHUB_REF_NAME}' is not vX.Y.Z or vX.Y.Z-suffix."
+            exit 1
+          fi
+
+          # HACS installs the version the manifest reports, not the tag. If the
+          # two disagree, the integration names a version nobody can find.
+          MANIFEST_VERSION="$(python3 -c "import json; print(json.load(open('custom_components/bambu_ams_monitoring/manifest.json'))['version'])")"
+          if [[ "${VERSION}" != "${MANIFEST_VERSION}" ]]; then
+            echo "::error::Tag version '${VERSION}' does not match manifest.json '${MANIFEST_VERSION}'."
+            exit 1
+          fi
+
+          # A suffix marks a pre-release, so an rc or a beta is never offered as
+          # the current version in HACS.
+          if [[ "${VERSION}" == *-* ]]; then
+            PRERELEASE=true
+          else
+            PRERELEASE=false
+          fi
+
+          echo "Publishing ${GITHUB_REF_NAME} (version ${VERSION}, prerelease: ${PRERELEASE})"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "prerelease=${PRERELEASE}" >> $GITHUB_OUTPUT
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+
+          # No archive is attached. HACS installs a standard custom repository
+          # by copying custom_components/bambu_ams_monitoring out of the tag,
+          # and an asset it never reads would only invite the assumption that
+          # it does.
+          LATEST="$([[ "${PRERELEASE}" == "true" ]] && echo false || echo true)"
+
+          # A re-run for a tag that already has a release should update it
+          # rather than fail on the second attempt.
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release edit "${GITHUB_REF_NAME}" \
+              --prerelease="${PRERELEASE}" \
+              --latest="${LATEST}"
+            echo "Updated the existing release ${GITHUB_REF_NAME}."
+          else
+            gh release create "${GITHUB_REF_NAME}" \
+              --title "${GITHUB_REF_NAME}" \
+              --generate-notes \
+              --prerelease="${PRERELEASE}" \
+              --latest="${LATEST}"
+            echo "Created the release ${GITHUB_REF_NAME} (prerelease: ${PRERELEASE})."
+          fi
