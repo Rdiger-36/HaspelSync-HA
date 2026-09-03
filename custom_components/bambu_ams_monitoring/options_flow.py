@@ -12,10 +12,13 @@ from .const import (
 
 
 class AmsManagerOptionsFlowHandler(config_entries.OptionsFlow):
-    """Handle options flow for Bambu AMS Monitoring."""
+    """Handle options flow for Bambu AMS Monitoring.
 
-    def __init__(self, config_entry: config_entries.ConfigEntry):
-        self.config_entry = config_entry
+    `self.config_entry` is provided by the base class. Assigning it here is
+    deprecated since Home Assistant 2024.11 and removed in 2025.12.
+    """
+
+    def __init__(self):
         self._printers_raw = []
 
     async def async_step_init(self, user_input=None):
@@ -45,6 +48,12 @@ class AmsManagerOptionsFlowHandler(config_entries.OptionsFlow):
             p["id"] for p in self.config_entry.data.get(CONF_PRINTERS, [])
         ]
 
+        # A printer that is configured here but currently missing from the
+        # backend answer stays selectable, so a backend that is unreachable at
+        # this moment cannot silently drop it from the entry.
+        for p in self.config_entry.data.get(CONF_PRINTERS, []):
+            printer_map.setdefault(p["id"], f"{p['name']} ({p['id']})")
+
         if user_input is None:
             return self.async_show_form(
                 step_id="edit_printers",
@@ -55,7 +64,10 @@ class AmsManagerOptionsFlowHandler(config_entries.OptionsFlow):
             )
 
         selected_ids = user_input[CONF_PRINTERS]
+
         name_lookup = {p["id"]: p["name"] for p in self._printers_raw}
+        for p in self.config_entry.data.get(CONF_PRINTERS, []):
+            name_lookup.setdefault(p["id"], p["name"])
 
         # Preserve names for IDs that are still known; fall back to ID as name
         printers_final = [
