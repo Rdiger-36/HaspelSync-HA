@@ -1,0 +1,26 @@
+# Groups the notes that gh release create --generate-notes writes, see
+# .github/workflows/release.yml. A pull request lands in the first category
+# whose labels it carries, so the catch all has to stay last.
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+
+  categories:
+    - title: New Features
+      labels:
+        - enhancement
+
+    - title: Fixes
+      labels:
+        - bug
+
+    - title: Documentation
+      labels:
+        - documentation
+
+    # Everything without one of the labels above, so an unlabelled pull request
+    # is still listed rather than silently missing from the release notes.
+    - title: Other Changes
+      labels:
+        - "*"

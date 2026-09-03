@@ -1,0 +1,47 @@
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  # HACS validates against its own moving requirements, so a repository that
+  # was green months ago can be red today without anything here changing.
+  schedule:
+    - cron: "0 4 * * 1"
+
+# A new push to the same branch makes the previous run pointless.
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  hassfest:
+    name: hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # Home Assistant's own manifest check: domain, version, iot_class,
+      # codeowners and the config_flow flag have to agree with the code.
+      - name: Run hassfest
+        uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    name: HACS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # Checks what HACS itself requires of a custom repository: hacs.json,
+      # the repository description and topics, the brands entry and the
+      # directory layout under custom_components.
+      - name: Run the HACS action
+        uses: hacs/action@main
+        with:
+          category: integration
