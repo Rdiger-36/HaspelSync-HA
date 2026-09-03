@@ -22,7 +22,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     session = async_get_clientsession(hass)
 
     entities = [
-        AmsPrinterSwitch(session, base_url, printer["id"], printer["name"])
+        AmsPrinterSwitch(session, base_url, printer["id"], printer["name"], entry.entry_id)
         for printer in printers
     ]
 
@@ -32,12 +32,16 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class AmsPrinterSwitch(SwitchEntity):
     """Switch to enable/disable AMS monitoring for a single Bambu printer."""
 
-    def __init__(self, session, base_url, printer_id, printer_name):
+    def __init__(self, session, base_url, printer_id, printer_name, entry_id):
         self._session = session
         self._base_url = base_url.rstrip("/")
         self._printer_id = printer_id
 
-        self._attr_unique_id = f"ams_monitoring_{printer_id}"
+        # Scoped to the config entry, so the same printer can be configured in
+        # several integration instances. The printer ID alone collides across
+        # entries, and Home Assistant drops the second entity of a duplicate
+        # unique ID.
+        self._attr_unique_id = f"{entry_id}_ams_monitoring_{printer_id}"
         self._attr_name = f"AMS Monitoring {printer_name}"
         self._attr_should_poll = True
         self._attr_is_on = False
