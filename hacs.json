@@ -2,7 +2,6 @@
   "name": "Bambu AMS Monitoring",
   "content_in_root": false,
   "render_readme": true,
-  "domains": ["bambu_ams_monitoring"],
   "iot_class": "local_polling",
   "country": []
 }
