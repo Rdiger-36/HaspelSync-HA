@@ -73,7 +73,7 @@ Adding a flow step: add the step ID and every data key to both `translations/en.
 
 ## Releasing
 
-`.github/workflows/release.yml` publishes on a `vX.Y.Z` tag and refuses one whose version does not equal `manifest.json` `version`, so bump the manifest in the same change that will be tagged. A suffix such as `1.0.2-rc.1` is published as a pre-release. No archive is attached: HACS installs this repository by copying `custom_components/bambu_ams_monitoring` out of the tag, and an asset it never reads only suggests otherwise.
+`.github/workflows/release.yml` publishes on a `vX.Y.Z` tag and refuses one whose version does not equal `manifest.json` `version`, so bump the manifest in the same change that will be tagged. A suffix such as `1.0.2-rc.1` is published as a pre-release. The release is titled `Version X.Y.Z`, which is how every release of this repository is named. No archive is attached: HACS installs this repository by copying `custom_components/bambu_ams_monitoring` out of the tag, and an asset it never reads only suggests otherwise.
 
 `.github/workflows/validate.yml` runs hassfest and the HACS action on every pull request, on `main`, and weekly, because HACS validates against requirements that move on their own.
 
