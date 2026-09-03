@@ -1,98 +1,74 @@
 import logging
 
-from homeassistant.components.switch import SwitchEntity
-from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import aiohttp
 
-from .const import (
-    DOMAIN,
-    CONF_BASE_URL,
-    CONF_PRINTERS,
-)
+from homeassistant.components.switch import SwitchEntity
+
+from .const import DOMAIN, DATA_COORDINATORS, REQUEST_TIMEOUT
+from .entity import AmsEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the AMS monitoring switches."""
-    data = hass.data[DOMAIN][entry.entry_id]
+    coordinators = hass.data[DOMAIN][entry.entry_id][DATA_COORDINATORS]
 
-    base_url = data[CONF_BASE_URL]
-    printers = data[CONF_PRINTERS]   # [{id, name}, ...]
-    session = async_get_clientsession(hass)
-
-    entities = [
-        AmsPrinterSwitch(session, base_url, printer["id"], printer["name"], entry.entry_id)
-        for printer in printers
-    ]
-
-    async_add_entities(entities, update_before_add=True)
+    async_add_entities(AmsPrinterSwitch(coordinator) for coordinator in coordinators.values())
 
 
-class AmsPrinterSwitch(SwitchEntity):
-    """Switch to enable/disable AMS monitoring for a single Bambu printer."""
+class AmsPrinterSwitch(AmsEntity, SwitchEntity):
+    """Switch to enable/disable AMS monitoring for a single Bambu printer.
 
-    def __init__(self, session, base_url, printer_id, printer_name, entry_id):
-        self._session = session
-        self._base_url = base_url.rstrip("/")
-        self._printer_id = printer_id
+    The state comes from the shared coordinator now, so the switch no longer
+    polls /api/status on its own while the sensors read the same answer. Its
+    name and unique ID stay exactly as they were: both are what an existing
+    installation has in its entity registry.
+    """
 
-        # Scoped to the config entry, so the same printer can be configured in
-        # several integration instances. The printer ID alone collides across
-        # entries, and Home Assistant drops the second entity of a duplicate
-        # unique ID.
-        self._attr_unique_id = f"{entry_id}_ams_monitoring_{printer_id}"
-        self._attr_name = f"AMS Monitoring {printer_name}"
-        self._attr_should_poll = True
-        self._attr_is_on = False
-        self._attr_available = False
+    _attr_has_entity_name = False
 
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, printer_id)},
-            name=printer_name,
-            manufacturer="Rdiger-36",
-            model="Bambu AMS Monitoring",
-        )
+    def __init__(self, coordinator):
+        super().__init__(coordinator, "ams_monitoring")
+        self._attr_name = f"AMS Monitoring {coordinator.printer_name}"
+
+    @property
+    def is_on(self):
+        return bool(self.coordinator.status.get("monitoringEnabled"))
 
     async def async_turn_on(self, **kwargs):
-        url = f"{self._base_url}/api/printer/{self._printer_id}/monitoring/start"
-        try:
-            async with self._session.post(url) as resp:
-                if resp.status == 200:
-                    self._attr_is_on = True
-                    self._attr_available = True
-                else:
-                    _LOGGER.warning("Failed to start monitoring for %s: HTTP %s", self._printer_id, resp.status)
-        except Exception as err:
-            _LOGGER.error("Error starting monitoring for %s: %s", self._printer_id, err)
-            self._attr_available = False
-        self.async_write_ha_state()
+        await self._async_set_monitoring("start")
 
     async def async_turn_off(self, **kwargs):
-        url = f"{self._base_url}/api/printer/{self._printer_id}/monitoring/stop"
-        try:
-            async with self._session.post(url) as resp:
-                if resp.status == 200:
-                    self._attr_is_on = False
-                    self._attr_available = True
-                else:
-                    _LOGGER.warning("Failed to stop monitoring for %s: HTTP %s", self._printer_id, resp.status)
-        except Exception as err:
-            _LOGGER.error("Error stopping monitoring for %s: %s", self._printer_id, err)
-            self._attr_available = False
-        self.async_write_ha_state()
+        await self._async_set_monitoring("stop")
 
-    async def async_update(self):
-        url = f"{self._base_url}/api/status/{self._printer_id}"
+    async def _async_set_monitoring(self, action: str):
+        """Starts or stops monitoring and reads the new state back.
+
+        The two endpoints answer HTTP 200 with `ok: false` when the state was
+        already what was asked for, so the body decides whether anything
+        happened. Either way the coordinator refreshes, which is what puts the
+        switch on the state the backend actually holds rather than on the one
+        this call assumed.
+        """
+        url = f"{self.coordinator.base_url}/api/printer/{self.coordinator.printer_id}/monitoring/{action}"
+
         try:
-            async with self._session.get(url) as resp:
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with self.coordinator.session.post(url, timeout=timeout) as resp:
                 if resp.status != 200:
-                    _LOGGER.debug("Status check for %s returned HTTP %s", self._printer_id, resp.status)
-                    self._attr_available = False
-                    return
-                data = await resp.json()
-                self._attr_is_on = data.get("monitoringEnabled", False)
-                self._attr_available = True
-        except Exception as err:
-            _LOGGER.warning("Cannot reach backend for %s: %s", self._printer_id, err)
-            self._attr_available = False
+                    _LOGGER.warning(
+                        "Failed to %s monitoring for %s: HTTP %s",
+                        action, self.coordinator.printer_id, resp.status,
+                    )
+                else:
+                    body = await resp.json(content_type=None)
+                    if isinstance(body, dict) and body.get("ok") is False:
+                        _LOGGER.debug(
+                            "Backend did not %s monitoring for %s: %s",
+                            action, self.coordinator.printer_id, body.get("message"),
+                        )
+        except (aiohttp.ClientError, ValueError, TimeoutError) as err:
+            _LOGGER.error("Error while sending %s for %s: %s", action, self.coordinator.printer_id, err)
+
+        await self.coordinator.async_request_refresh()

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 
@@ -8,7 +9,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import DOMAIN, CONF_BASE_URL, CONF_PRINTERS
+from .const import DOMAIN, CONF_BASE_URL, CONF_PRINTERS, PLATFORMS, DATA_COORDINATORS
+from .coordinator import AmsPrinterCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,12 +25,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     await _async_repair_printer_ids(hass, entry)
     _async_migrate_unique_ids(hass, entry)
 
-    hass.data[DOMAIN][entry.entry_id] = {
-        CONF_BASE_URL: entry.data[CONF_BASE_URL],
-        CONF_PRINTERS: entry.data[CONF_PRINTERS],
+    session = async_get_clientsession(hass)
+    base_url = entry.data[CONF_BASE_URL]
+
+    coordinators = {
+        printer["id"]: AmsPrinterCoordinator(hass, entry, session, base_url, printer["id"], printer["name"])
+        for printer in entry.data[CONF_PRINTERS]
     }
 
-    await hass.config_entries.async_forward_entry_setups(entry, ["switch"])
+    # Refreshed rather than set up strictly: a backend that is down must not
+    # keep the entry from loading, because its entities carry the history of
+    # this installation and going unavailable says more than disappearing does.
+    await asyncio.gather(*(coordinator.async_refresh() for coordinator in coordinators.values()))
+
+    hass.data[DOMAIN][entry.entry_id] = {
+        CONF_BASE_URL: base_url,
+        CONF_PRINTERS: entry.data[CONF_PRINTERS],
+        DATA_COORDINATORS: coordinators,
+    }
+
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 
@@ -152,7 +168,7 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry):
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
-    unloaded = await hass.config_entries.async_unload_platforms(entry, ["switch"])
+    unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
         hass.data[DOMAIN].pop(entry.entry_id)
     return unloaded

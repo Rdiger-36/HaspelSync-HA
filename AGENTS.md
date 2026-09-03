@@ -1,6 +1,6 @@
 # Bambu AMS Monitoring
 
-A Home Assistant custom integration. It shows one switch per Bambu Lab printer and toggles the monitoring state of an external backend, [bambulab-ams-spoolman-filamentstatus](https://github.com/Rdiger-36/bambulab-ams-spoolman-filamentstatus). It holds no printer logic of its own: every state it shows comes from that backend over HTTP.
+A Home Assistant custom integration. It toggles the monitoring state of an external backend, [bambulab-ams-spoolman-filamentstatus](https://github.com/Rdiger-36/bambulab-ams-spoolman-filamentstatus), and mirrors what that backend knows about a printer: its AMS slots, its AMS units and its current print. It holds no printer logic of its own: every state it shows comes from that backend over HTTP.
 
 ## Intent Layer
 
@@ -15,20 +15,28 @@ The whole integration is roughly 5k tokens in a single package, so it carries no
 | `custom_components/bambu_ams_monitoring/__init__.py` | Sets up and unloads a config entry, repairs stored printer IDs, migrates entity unique IDs |
 | `custom_components/bambu_ams_monitoring/config_flow.py` | Two step setup: base URL, then printer selection |
 | `custom_components/bambu_ams_monitoring/options_flow.py` | Edits the printer selection of an existing entry |
-| `custom_components/bambu_ams_monitoring/switch.py` | The only platform, one `SwitchEntity` per configured printer |
-| `custom_components/bambu_ams_monitoring/const.py` | Domain and config keys |
+| `custom_components/bambu_ams_monitoring/coordinator.py` | One `DataUpdateCoordinator` per printer, polls status, spools and print job |
+| `custom_components/bambu_ams_monitoring/entity.py` | Entity bases for a printer, an AMS unit and a slot, plus the discovery helper |
+| `custom_components/bambu_ams_monitoring/switch.py` | One `SwitchEntity` per configured printer |
+| `custom_components/bambu_ams_monitoring/sensor.py` | Printer, AMS unit and slot sensors |
+| `custom_components/bambu_ams_monitoring/binary_sensor.py` | Connection, attention, drying and slot state binary sensors |
+| `custom_components/bambu_ams_monitoring/const.py` | Domain, config keys, platform list and polling constants |
 | `custom_components/bambu_ams_monitoring/translations/` | English and German strings, keys must match the step and error IDs in both flows |
 
 ## Backend Contract
 
-Four endpoints, all unauthenticated, backend default port 4000:
+Six endpoints, all unauthenticated, backend default port 4000:
 
 | Call | Answer |
 |------|--------|
 | `GET /api/printers` | `[{"id": "...", "name": "..."}]` |
-| `GET /api/status/<id>` | Object carrying `monitoringEnabled`, plus 404 when the ID is unknown |
+| `GET /api/status/<id>` | `monitoringEnabled`, `mqttStatus`, `spoolmanStatus`, `lastMqttUpdate`, `lastMqttAmsUpdate`, `gcodeState`, `amsEnv`, `VERSION`, `MODE`, `LEGACY_MODE`, plus 404 when the ID is unknown |
+| `GET /api/spools/<id>` | One entry per AMS slot: `amsId`, `slotState`, `slot`, `existingSpool`, `connectedViaTag`, `connectedViaMapping`, `archived`, `option`, `error`, `correctedRemain`, `correctedWeight` |
+| `GET /api/print/<id>` | `gcodeState`, `jobName`, `layerNum`, `totalLayers`, `consumption`, `consumptionBooked`. May fetch the sliced file over FTPS, so it is the slow one |
 | `POST /api/printer/<id>/monitoring/start` | `{"ok": true}`, or `{"ok": false, "message": "..."}` when it was already on |
 | `POST /api/printer/<id>/monitoring/stop` | Same shape |
+
+`amsId` is the slot label the backend builds, `A1` to `D4`, `HT-A` for an AMS HT and `External` for the spool holder. An `amsEnv` entry carries the unit letter alone. The backend defines both in `src/utils.js`, `convertAMSandSlot()`.
 
 The backend upper cases every printer serial it stores, and it resolves `<id>` by exact match against its own list.
 
@@ -39,18 +47,25 @@ The backend upper cases every printer serial it stores, and it resolves `<id>` b
 - The device identifier stays `(DOMAIN, printer_id)`, so all instances holding one printer attach to a single device.
 - Nothing aborts on a duplicate: neither a base URL that is already configured nor a printer that another entry already holds.
 - Changing a unique ID scheme or an ID stored in an entry requires a migration in `__init__.py`. Without one, existing installations lose their entity ID and their history.
-- An unreachable backend must never shrink an entry. The options flow keeps configured printers selectable when the printer list cannot be fetched.
+- An unreachable backend must never shrink an entry. The options flow keeps configured printers selectable when the printer list cannot be fetched, and a backend that is down at setup leaves the entry loaded with unavailable entities rather than raising `ConfigEntryNotReady`.
+- `/api/status` decides whether a printer is reachable. The spool and print endpoints are allowed to fail on their own, so a slow sliced file cannot take the connection sensors down.
+- The remaining weight and percentage of a slot follow the same resolution the backend dashboard makes, see `_remaining()` in `sensor.py`. Both have to keep agreeing, otherwise the same spool reads differently in the two places. The single deviation is the AMS reading of -1, which means no reading and becomes an empty state here rather than a negative percentage.
+- Slots and AMS units are discovered on every coordinator update, not only at setup. The backend answers with an empty spool list until its first AMS update, so entities built once at setup would be missing on a fresh install.
 - The options flow relies on the `config_entry` property of its base class, which needs Home Assistant 2024.11. Assigning `self.config_entry` is removed in 2025.12. `hacs.json` pins that minimum.
 - `manifest.json` `version` and the git tag belong together. HACS reads the manifest.
 
 ## Patterns
 
-Adding a platform, for example a sensor:
+Adding a platform, for example a number:
 
 1. Write the platform module next to `switch.py`.
-2. Add it to the list in `async_forward_entry_setups` and `async_unload_platforms` in `__init__.py`.
-3. Build its unique ID as `{entry_id}_{platform}_{printer_id}` so it survives a second instance.
-4. Reuse `async_get_clientsession(hass)`. Never open an `aiohttp.ClientSession` inside an entity.
+2. Add it to `PLATFORMS` in `const.py`, which both `async_forward_entry_setups` and `async_unload_platforms` read.
+3. Derive from `AmsEntity`, `AmsUnitEntity` or `AmsSlotEntity` in `entity.py`. They build the unique ID as `{entry_id}_{key}_{printer_id}`, attach the printer device and answer availability.
+4. Read from the coordinator rather than from the network. Nothing below `coordinator.py` opens an HTTP request of its own, apart from the switch, which posts an action.
+
+Adding an entity that exists per slot or per AMS unit: register it in the `async_track_members` call of its platform, so it appears with a unit that is plugged in later.
+
+Adding a value to an entity: give every new entity a `translation_key` and add its name to both translation files under `entity`. A slot or unit name uses the `{slot}` or `{ams}` placeholder, which the entity bases fill in.
 
 Adding a flow step: add the step ID and every data key to both `translations/en.json` and `translations/de.json`. A missing key shows up as a raw key in the UI.
 
@@ -59,7 +74,8 @@ Adding a flow step: add the step ID and every data key to both `translations/en.
 - Do not open an `aiohttp.ClientSession` in the entity layer. The shared Home Assistant session is passed in.
 - Do not treat HTTP 200 alone as success on the start and stop endpoints. They answer `ok: false` when the state was already set.
 - Do not make the config flow claim a unique ID. That would block the second instance for a printer or a backend.
-- Do not add blocking IO to `async_update`. It runs on the event loop.
+- Do not add blocking IO to the update path. It runs on the event loop.
+- Do not poll per entity. Everything about one printer is read in a single coordinator cycle.
 
 ## House Rules
 
