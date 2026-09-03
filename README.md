@@ -79,9 +79,9 @@ After setup, you can edit the printer selection and the API key at any time:
 
 1. Go to **Settings → Devices & Services**
 2. Find **Bambu AMS Monitoring** and click **Configure**
-3. Adjust your printer selection or the API key and save
+3. Adjust your printer selection and save
 
-A key the backend rejects is not saved, so the form comes back with the error rather than leaving the integration with a key that cannot work.
+The key field of that dialog starts empty and the stored key is never shown. Leave it empty to keep the key the integration already holds, and fill it in only to replace it, for example after the key was revoked in the backend. A key the backend rejects is not saved, so the form comes back with the error rather than leaving the integration with a key that cannot work.
 
 ## Entities
 

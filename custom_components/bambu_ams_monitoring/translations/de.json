@@ -36,9 +36,9 @@
     "step": {
       "edit_printers": {
         "title": "Druckerauswahl bearbeiten",
-        "description": "Wähle die Drucker aus, die diese Integration überwachen soll, und korrigiere den API-Key, falls er sich geändert hat.",
+        "description": "Wähle die Drucker aus, die diese Integration überwachen soll. Lass den API-Key leer, um den bisherigen zu behalten, und trage nur dann etwas ein, wenn du ihn ersetzen willst.",
         "data": {
-          "api_key": "API-Key",
+          "api_key": "Neuer API-Key",
           "printers": "Drucker"
         }
       }

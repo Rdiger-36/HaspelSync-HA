@@ -36,9 +36,9 @@
     "step": {
       "edit_printers": {
         "title": "Edit Printers",
-        "description": "Select the printers this integration should monitor, and correct the API key if it has changed.",
+        "description": "Select the printers this integration should monitor. Leave the API key empty to keep the one this entry already holds, and fill it in only to replace that key.",
         "data": {
-          "api_key": "API key",
+          "api_key": "New API key",
           "printers": "Printers"
         }
       }

@@ -33,13 +33,18 @@ class AmsManagerOptionsFlowHandler(config_entries.OptionsFlow):
         The key sits in the same step rather than in one of its own: it is read
         for the printer list this step shows, so a step asking for it separately
         would have to fetch that list twice.
+
+        Its field starts empty and stays empty, so the stored key is never put
+        back on screen. An empty field therefore cannot mean "no key", it means
+        the key of the entry is kept, which is what somebody editing the printer
+        selection alone is after.
         """
         errors = {}
         key_rejected = False
 
         base_url = self.config_entry.data.get(CONF_BASE_URL)
-        api_key = (user_input or {}).get(CONF_API_KEY, self.config_entry.data.get(CONF_API_KEY, ""))
-        api_key = api_key.strip()
+        stored_key = self.config_entry.data.get(CONF_API_KEY, "")
+        api_key = (user_input or {}).get(CONF_API_KEY, "").strip() or stored_key
 
         try:
             self._printers_raw = await async_fetch_printers(
@@ -76,7 +81,7 @@ class AmsManagerOptionsFlowHandler(config_entries.OptionsFlow):
             return self.async_show_form(
                 step_id="edit_printers",
                 data_schema=vol.Schema({
-                    vol.Required(CONF_API_KEY, default=api_key): str,
+                    vol.Optional(CONF_API_KEY, default=""): str,
                     vol.Required(CONF_PRINTERS, default=currently_selected): cv.multi_select(printer_map)
                 }),
                 errors=errors,

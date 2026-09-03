@@ -15,7 +15,7 @@ The whole integration is roughly 5k tokens in a single package, so it carries no
 | `custom_components/bambu_ams_monitoring/__init__.py` | Sets up and unloads a config entry, repairs stored printer IDs, migrates entity unique IDs |
 | `custom_components/bambu_ams_monitoring/api.py` | Auth header and the printer list read, shared by both flows and the setup |
 | `custom_components/bambu_ams_monitoring/config_flow.py` | Two step setup: base URL and API key, then printer selection, plus the reauth step |
-| `custom_components/bambu_ams_monitoring/options_flow.py` | Edits the printer selection and the API key of an existing entry |
+| `custom_components/bambu_ams_monitoring/options_flow.py` | Edits the printer selection of an existing entry, and replaces its API key when the key field is filled in |
 | `custom_components/bambu_ams_monitoring/coordinator.py` | One `DataUpdateCoordinator` per printer, polls status, spools and print job |
 | `custom_components/bambu_ams_monitoring/entity.py` | Entity bases for a printer, an AMS unit and a slot, plus the discovery helper |
 | `custom_components/bambu_ams_monitoring/switch.py` | One `SwitchEntity` per configured printer |
@@ -51,6 +51,7 @@ The backend upper cases every printer serial it stores, and it resolves `<id>` b
 - Nothing aborts on a duplicate: neither a base URL that is already configured nor a printer that another entry already holds.
 - Changing a unique ID scheme or an ID stored in an entry requires a migration in `__init__.py`. Without one, existing installations lose their entity ID and their history.
 - A 401 is not a connection problem and is never retried into one. Everything that talks to the backend turns it into `ConfigEntryAuthFailed`, which is what puts the reauth step in front of the user. An entry set up before the backend asked for a key holds none, so this is also the upgrade path of every existing installation.
+- The API key field of the options flow is empty on every render and the stored key is never put into it. An empty field means the stored key is kept, so it can never mean the key was cleared, and a screenshot of that dialog carries no secret.
 - The API key is optional in the stored entry data and read with `entry.data.get()`. An entry written before it existed carries no key, and a backend older than 1.3.0 needs none.
 - An unreachable backend must never shrink an entry. The options flow keeps configured printers selectable when the printer list cannot be fetched, and a backend that is down at setup leaves the entry loaded with unavailable entities rather than raising `ConfigEntryNotReady`.
 - `/api/status` decides whether a printer is reachable. The spool and print endpoints are allowed to fail on their own, so a slow sliced file cannot take the connection sensors down.
