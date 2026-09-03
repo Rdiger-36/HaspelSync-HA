@@ -3,9 +3,10 @@
     "step": {
       "user": {
         "title": "Bambu AMS Monitoring – Setup",
-        "description": "Enter the base URL of your Bambu AMS Monitoring backend.",
+        "description": "Enter the base URL of your Bambu AMS Monitoring backend and an API key. Create the key on the settings page of the backend, under \"Network access\".",
         "data": {
-          "base_url": "Base URL"
+          "base_url": "Base URL",
+          "api_key": "API key"
         }
       },
       "select_printers": {
@@ -14,24 +15,37 @@
         "data": {
           "printers": "Printers"
         }
+      },
+      "reauth_confirm": {
+        "title": "Bambu AMS Monitoring: New API Key",
+        "description": "The backend at {base_url} no longer accepts the API key of this integration. Create a new key under \"Network access\" on its settings page and enter it here.",
+        "data": {
+          "api_key": "API key"
+        }
       }
     },
     "error": {
-      "cannot_connect": "Could not connect to the backend. Please check the URL."
+      "cannot_connect": "Could not connect to the backend. Please check the URL.",
+      "invalid_auth": "The backend did not accept this API key. Create one under \"Network access\" on its settings page."
+    },
+    "abort": {
+      "reauth_successful": "The new API key is accepted."
     }
   },
   "options": {
     "step": {
       "edit_printers": {
         "title": "Edit Printers",
-        "description": "Select the printers this integration should monitor.",
+        "description": "Select the printers this integration should monitor, and correct the API key if it has changed.",
         "data": {
+          "api_key": "API key",
           "printers": "Printers"
         }
       }
     },
     "error": {
-      "cannot_connect": "Could not connect to the backend. The printers currently configured are still selectable."
+      "cannot_connect": "Could not connect to the backend. The printers currently configured are still selectable.",
+      "invalid_auth": "The backend did not accept this API key, so nothing was saved. Create one under \"Network access\" on its settings page."
     }
   },
   "entity": {

@@ -2,14 +2,14 @@ import asyncio
 import logging
 import re
 
-import aiohttp
-
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import DOMAIN, CONF_BASE_URL, CONF_PRINTERS, PLATFORMS, DATA_COORDINATORS
+from .api import BackendUnauthorized, BackendUnreachable, async_fetch_printers
+from .const import DOMAIN, CONF_BASE_URL, CONF_PRINTERS, CONF_API_KEY, PLATFORMS, DATA_COORDINATORS
 from .coordinator import AmsPrinterCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -27,9 +27,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     session = async_get_clientsession(hass)
     base_url = entry.data[CONF_BASE_URL]
+    api_key = entry.data.get(CONF_API_KEY)
 
     coordinators = {
-        printer["id"]: AmsPrinterCoordinator(hass, entry, session, base_url, printer["id"], printer["name"])
+        printer["id"]: AmsPrinterCoordinator(hass, entry, session, base_url, api_key, printer["id"], printer["name"])
         for printer in entry.data[CONF_PRINTERS]
     }
 
@@ -40,6 +41,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     hass.data[DOMAIN][entry.entry_id] = {
         CONF_BASE_URL: base_url,
+        CONF_API_KEY: api_key,
         CONF_PRINTERS: entry.data[CONF_PRINTERS],
         DATA_COORDINATORS: coordinators,
     }
@@ -58,6 +60,10 @@ async def _async_repair_printer_ids(hass: HomeAssistant, entry: ConfigEntry):
     is undone here: a stored ID the backend does not know is matched against the
     backend list without the counter and case-insensitively, because the backend
     upper-cases every serial it stores.
+
+    A rejected API key aborts the setup into the reauth flow. Everything below
+    this point would fail the same way, and asking for a key once is a better
+    answer than a set of entities that all go unavailable.
     """
     stored = entry.data.get(CONF_PRINTERS, [])
     if not stored:
@@ -67,11 +73,10 @@ async def _async_repair_printer_ids(hass: HomeAssistant, entry: ConfigEntry):
     session = async_get_clientsession(hass)
 
     try:
-        async with session.get(f"{base_url}/api/printers") as resp:
-            if resp.status != 200:
-                return
-            backend = await resp.json()
-    except (aiohttp.ClientError, ValueError, TimeoutError) as err:
+        backend = await async_fetch_printers(session, base_url, entry.data.get(CONF_API_KEY))
+    except BackendUnauthorized as err:
+        raise ConfigEntryAuthFailed("The backend does not accept the API key of this entry") from err
+    except BackendUnreachable as err:
         # Nothing to repair against; the next setup tries again.
         _LOGGER.debug("Cannot read the printer list for the ID repair: %s", err)
         return

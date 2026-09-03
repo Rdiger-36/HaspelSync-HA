@@ -1,13 +1,16 @@
-import aiohttp
 import voluptuous as vol
 
 from homeassistant import config_entries
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
+from .api import BackendUnauthorized, BackendUnreachable, async_fetch_printers
 from .const import (
-    DOMAIN,
     CONF_BASE_URL,
     CONF_PRINTERS,
+    CONF_API_KEY,
+    CONF_ERR_CANNOT_CONNECT,
+    CONF_ERR_INVALID_AUTH,
 )
 
 
@@ -25,18 +28,29 @@ class AmsManagerOptionsFlowHandler(config_entries.OptionsFlow):
         return await self.async_step_edit_printers()
 
     async def async_step_edit_printers(self, user_input=None):
+        """Edits the printer selection and the API key of an entry.
+
+        The key sits in the same step rather than in one of its own: it is read
+        for the printer list this step shows, so a step asking for it separately
+        would have to fetch that list twice.
+        """
         errors = {}
+        key_rejected = False
 
         base_url = self.config_entry.data.get(CONF_BASE_URL)
+        api_key = (user_input or {}).get(CONF_API_KEY, self.config_entry.data.get(CONF_API_KEY, ""))
+        api_key = api_key.strip()
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f"{base_url}/api/printers") as resp:
-                    if resp.status != 200:
-                        raise Exception("Backend error")
-                    self._printers_raw = await resp.json()
-        except Exception:
-            errors["base"] = "cannot_connect"
+            self._printers_raw = await async_fetch_printers(
+                async_get_clientsession(self.hass), base_url, api_key
+            )
+        except BackendUnauthorized:
+            errors["base"] = CONF_ERR_INVALID_AUTH
+            key_rejected = True
+            self._printers_raw = []
+        except BackendUnreachable:
+            errors["base"] = CONF_ERR_CANNOT_CONNECT
             self._printers_raw = []
 
         printer_map = {
@@ -54,10 +68,15 @@ class AmsManagerOptionsFlowHandler(config_entries.OptionsFlow):
         for p in self.config_entry.data.get(CONF_PRINTERS, []):
             printer_map.setdefault(p["id"], f"{p['name']} ({p['id']})")
 
-        if user_input is None:
+        # A key the backend rejects is not saved: the form comes back with the
+        # rejection rather than writing an entry that can only go into reauth. A
+        # backend that is merely unreachable saves as it always did, otherwise
+        # its downtime would keep the printer selection from being edited.
+        if user_input is None or key_rejected:
             return self.async_show_form(
                 step_id="edit_printers",
                 data_schema=vol.Schema({
+                    vol.Required(CONF_API_KEY, default=api_key): str,
                     vol.Required(CONF_PRINTERS, default=currently_selected): cv.multi_select(printer_map)
                 }),
                 errors=errors,
@@ -81,6 +100,7 @@ class AmsManagerOptionsFlowHandler(config_entries.OptionsFlow):
             title="",
             data={
                 CONF_BASE_URL: base_url,
+                CONF_API_KEY: api_key,
                 CONF_PRINTERS: printers_final,
             },
         )

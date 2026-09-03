@@ -4,8 +4,10 @@ DOMAIN = "bambu_ams_monitoring"
 
 CONF_BASE_URL = "base_url"
 CONF_PRINTERS = "printers"
+CONF_API_KEY = "api_key"
 
 CONF_ERR_CANNOT_CONNECT = "cannot_connect"
+CONF_ERR_INVALID_AUTH = "invalid_auth"
 
 # The switch was the only platform for a long time. It stays first in the list
 # so an existing installation keeps the order it already shows.

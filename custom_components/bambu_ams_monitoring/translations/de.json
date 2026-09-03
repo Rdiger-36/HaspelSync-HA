@@ -3,9 +3,10 @@
     "step": {
       "user": {
         "title": "Bambu AMS Monitoring – Einrichtung",
-        "description": "Gib die Basis-URL deines Bambu AMS Monitoring Backends ein.",
+        "description": "Gib die Basis-URL deines Bambu AMS Monitoring Backends und einen API-Key ein. Den Key legst du auf der Einstellungsseite des Backends unter „Netzwerkzugriff“ an.",
         "data": {
-          "base_url": "Basis-URL"
+          "base_url": "Basis-URL",
+          "api_key": "API-Key"
         }
       },
       "select_printers": {
@@ -14,24 +15,37 @@
         "data": {
           "printers": "Drucker"
         }
+      },
+      "reauth_confirm": {
+        "title": "Bambu AMS Monitoring: Neuer API-Key",
+        "description": "Das Backend unter {base_url} akzeptiert den API-Key dieser Integration nicht mehr. Lege auf seiner Einstellungsseite unter „Netzwerkzugriff“ einen neuen Key an und trage ihn hier ein.",
+        "data": {
+          "api_key": "API-Key"
+        }
       }
     },
     "error": {
-      "cannot_connect": "Verbindung zum Backend fehlgeschlagen. Bitte überprüfe die URL."
+      "cannot_connect": "Verbindung zum Backend fehlgeschlagen. Bitte überprüfe die URL.",
+      "invalid_auth": "Das Backend hat diesen API-Key nicht akzeptiert. Lege auf seiner Einstellungsseite unter „Netzwerkzugriff“ einen an."
+    },
+    "abort": {
+      "reauth_successful": "Der neue API-Key wird akzeptiert."
     }
   },
   "options": {
     "step": {
       "edit_printers": {
         "title": "Druckerauswahl bearbeiten",
-        "description": "Wähle die Drucker aus, die diese Integration überwachen soll.",
+        "description": "Wähle die Drucker aus, die diese Integration überwachen soll, und korrigiere den API-Key, falls er sich geändert hat.",
         "data": {
+          "api_key": "API-Key",
           "printers": "Drucker"
         }
       }
     },
     "error": {
-      "cannot_connect": "Verbindung zum Backend fehlgeschlagen. Die aktuell eingerichteten Drucker bleiben auswählbar."
+      "cannot_connect": "Verbindung zum Backend fehlgeschlagen. Die aktuell eingerichteten Drucker bleiben auswählbar.",
+      "invalid_auth": "Das Backend hat diesen API-Key nicht akzeptiert, es wurde nichts gespeichert. Lege auf seiner Einstellungsseite unter „Netzwerkzugriff“ einen an."
     }
   },
   "entity": {

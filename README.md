@@ -44,6 +44,7 @@
 | Requirement | Description |
 |---|---|
 | [bambulab-ams-spoolman-filamentstatus](https://github.com/Rdiger-36/bambulab-ams-spoolman-filamentstatus) | The backend service this integration connects to |
+| An API key of that backend | Backend 1.3.0 and newer answers its API only to the Web UI and to callers carrying a key. Create one on the settings page of the backend, under **Network access** |
 | [Spoolman](https://github.com/Donkie/Spoolman) | Filament management service |
 | [HACS](https://hacs.xyz/) | Required for installation in Home Assistant |
 | Home Assistant 2024.11 or newer | Older versions do not provide the config entry to the options flow, so editing the printer selection fails |
@@ -66,16 +67,21 @@ https://github.com/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus
    https://ams-server.example.com
    https://myserver.com/ams
    ```
-4. Select the printer(s) you want to monitor
-5. Enjoy your toggle switch
+4. Enter an API key of that backend. It is created on the backend settings page under **Network access**, starts with `ams_` and is shown only once, so copy it before closing the dialog
+5. Select the printer(s) you want to monitor
+6. Enjoy your toggle switch
+
+A backend older than 1.3.0 does not know API keys and ignores the one sent to it, so the field can be filled with anything there.
 
 ## Configuration
 
-After setup, you can edit the printer selection at any time:
+After setup, you can edit the printer selection and the API key at any time:
 
 1. Go to **Settings → Devices & Services**
 2. Find **Bambu AMS Monitoring** and click **Configure**
-3. Adjust your printer selection and save
+3. Adjust your printer selection or the API key and save
+
+A key the backend rejects is not saved, so the form comes back with the error rather than leaving the integration with a key that cannot work.
 
 ## Entities
 
@@ -129,11 +135,14 @@ The same printer may be configured in more than one integration instance, and th
 **Config flow fails to load**
 Make sure the backend is reachable at the URL you entered and responds at `/api/printers`.
 
+**Home Assistant asks to re-authenticate the integration**
+The backend answered with HTTP 401, which means it does not accept the API key any more: the key was revoked, or the backend was updated to 1.3.0 while this integration still held none. Create a key under **Network access** on the backend settings page and enter it in the dialog Home Assistant shows. Nothing else about the entry changes, and every entity keeps its history.
+
 **Entities show as unavailable**
 Either the backend is not reachable, or it does not know the printer ID the entity was configured with. Check that the service is running and that the URL and port are correct:
 
 ```
-curl http://<backend>:4000/api/printers
+curl -H "Authorization: Bearer ams_your_key" http://<backend>:4000/api/printers
 ```
 
 The IDs in that answer are the ones the backend accepts. An ID left over from an earlier version of this integration is corrected automatically when the integration loads, so a reload of the integration is worth trying before anything else.
@@ -142,7 +151,7 @@ The IDs in that answer are the ones the backend accepts. An ID left over from an
 The backend reports slots only after its first AMS update, and it reports environment readings only for an AMS that has them. Turn monitoring on, wait for one update interval, and check what the backend answers:
 
 ```
-curl http://<backend>:4000/api/spools/<printer-id>
+curl -H "Authorization: Bearer ams_your_key" http://<backend>:4000/api/spools/<printer-id>
 ```
 
 **Changes after editing printers do not take effect**

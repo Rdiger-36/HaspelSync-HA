@@ -13,8 +13,9 @@ The whole integration is roughly 5k tokens in a single package, so it carries no
 | File | Role |
 |------|------|
 | `custom_components/bambu_ams_monitoring/__init__.py` | Sets up and unloads a config entry, repairs stored printer IDs, migrates entity unique IDs |
-| `custom_components/bambu_ams_monitoring/config_flow.py` | Two step setup: base URL, then printer selection |
-| `custom_components/bambu_ams_monitoring/options_flow.py` | Edits the printer selection of an existing entry |
+| `custom_components/bambu_ams_monitoring/api.py` | Auth header and the printer list read, shared by both flows and the setup |
+| `custom_components/bambu_ams_monitoring/config_flow.py` | Two step setup: base URL and API key, then printer selection, plus the reauth step |
+| `custom_components/bambu_ams_monitoring/options_flow.py` | Edits the printer selection and the API key of an existing entry |
 | `custom_components/bambu_ams_monitoring/coordinator.py` | One `DataUpdateCoordinator` per printer, polls status, spools and print job |
 | `custom_components/bambu_ams_monitoring/entity.py` | Entity bases for a printer, an AMS unit and a slot, plus the discovery helper |
 | `custom_components/bambu_ams_monitoring/switch.py` | One `SwitchEntity` per configured printer |
@@ -25,7 +26,7 @@ The whole integration is roughly 5k tokens in a single package, so it carries no
 
 ## Backend Contract
 
-Six endpoints, all unauthenticated, backend default port 4000:
+Six endpoints, backend default port 4000. Every one of them needs an API key from backend 1.3.0 on: the backend answers `/api/` only to its own Web UI and to a caller carrying a key, whether or not a Web UI password is set. The key travels as `Authorization: Bearer <key>`, is created on the backend settings page under Network access and starts with `ams_`. A backend older than that ignores the header, which is why an entry without a key is not repaired into one until a request is actually refused.
 
 | Call | Answer |
 |------|--------|
@@ -35,6 +36,8 @@ Six endpoints, all unauthenticated, backend default port 4000:
 | `GET /api/print/<id>` | `gcodeState`, `jobName`, `layerNum`, `totalLayers`, `consumption`, `consumptionBooked`. May fetch the sliced file over FTPS, so it is the slow one |
 | `POST /api/printer/<id>/monitoring/start` | `{"ok": true}`, or `{"ok": false, "message": "..."}` when it was already on |
 | `POST /api/printer/<id>/monitoring/stop` | Same shape |
+
+A refused call is answered with HTTP 401 and a body carrying `apiKeyRequired` when no Web UI password is set, `authRequired` when one is. Neither field is read here: the status code alone decides, because both mean the same thing for a caller that has no browser.
 
 `amsId` is the slot label the backend builds, `A1` to `D4`, `HT-A` for an AMS HT and `External` for the spool holder. An `amsEnv` entry carries the unit letter alone. The backend defines both in `src/utils.js`, `convertAMSandSlot()`.
 
@@ -47,6 +50,8 @@ The backend upper cases every printer serial it stores, and it resolves `<id>` b
 - The device identifier stays `(DOMAIN, printer_id)`, so all instances holding one printer attach to a single device.
 - Nothing aborts on a duplicate: neither a base URL that is already configured nor a printer that another entry already holds.
 - Changing a unique ID scheme or an ID stored in an entry requires a migration in `__init__.py`. Without one, existing installations lose their entity ID and their history.
+- A 401 is not a connection problem and is never retried into one. Everything that talks to the backend turns it into `ConfigEntryAuthFailed`, which is what puts the reauth step in front of the user. An entry set up before the backend asked for a key holds none, so this is also the upgrade path of every existing installation.
+- The API key is optional in the stored entry data and read with `entry.data.get()`. An entry written before it existed carries no key, and a backend older than 1.3.0 needs none.
 - An unreachable backend must never shrink an entry. The options flow keeps configured printers selectable when the printer list cannot be fetched, and a backend that is down at setup leaves the entry loaded with unavailable entities rather than raising `ConfigEntryNotReady`.
 - `/api/status` decides whether a printer is reachable. The spool and print endpoints are allowed to fail on their own, so a slow sliced file cannot take the connection sensors down.
 - The remaining weight and percentage of a slot follow the same resolution the backend dashboard makes, see `_remaining()` in `sensor.py`. Both have to keep agreeing, otherwise the same spool reads differently in the two places. The single deviation is the AMS reading of -1, which means no reading and becomes an empty state here rather than a negative percentage.
@@ -71,7 +76,8 @@ Adding a flow step: add the step ID and every data key to both `translations/en.
 
 ## Anti-patterns
 
-- Do not open an `aiohttp.ClientSession` in the entity layer. The shared Home Assistant session is passed in.
+- Do not open an `aiohttp.ClientSession` in the entity layer, and no longer in a flow either. The shared Home Assistant session is passed in or taken from `async_get_clientsession()`.
+- Do not send a request to the backend without `auth_headers()`. Every call needs the key, and a new call site that forgets it fails only on an installation that has one.
 - Do not treat HTTP 200 alone as success on the start and stop endpoints. They answer `ok: false` when the state was already set.
 - Do not make the config flow claim a unique ID. That would block the second instance for a printer or a backend.
 - Do not add blocking IO to the update path. It runs on the event loop.
@@ -101,7 +107,7 @@ There is no test suite and the code cannot run outside Home Assistant. Before ha
 
 1. `python3 -m py_compile custom_components/bambu_ams_monitoring/*.py`
 2. Load the integration in a real Home Assistant, check the log for the ID repair line, toggle a switch, then add a second instance holding the same printer and confirm both switches appear and follow each other.
-3. Reach the backend directly to tell an integration bug from a backend one: `curl http://<backend>:4000/api/printers`
+3. Reach the backend directly to tell an integration bug from a backend one: `curl -H "Authorization: Bearer ams_<key>" http://<backend>:4000/api/printers`. Without the header a backend from 1.3.0 on answers 401, which says nothing about the integration.
 
 ## Related Context
 

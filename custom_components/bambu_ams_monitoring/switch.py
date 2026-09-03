@@ -4,6 +4,7 @@ import aiohttp
 
 from homeassistant.components.switch import SwitchEntity
 
+from .api import auth_headers
 from .const import DOMAIN, DATA_COORDINATORS, REQUEST_TIMEOUT
 from .entity import AmsEntity
 
@@ -50,12 +51,16 @@ class AmsPrinterSwitch(AmsEntity, SwitchEntity):
         happened. Either way the coordinator refreshes, which is what puts the
         switch on the state the backend actually holds rather than on the one
         this call assumed.
+
+        A 401 is left to that refresh as well: the coordinator turns it into the
+        reauth flow, and raising it from a toggle would only tell the one person
+        who happened to press the switch.
         """
         url = f"{self.coordinator.base_url}/api/printer/{self.coordinator.printer_id}/monitoring/{action}"
 
         try:
             timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with self.coordinator.session.post(url, timeout=timeout) as resp:
+            async with self.coordinator.session.post(url, headers=auth_headers(self.coordinator.api_key), timeout=timeout) as resp:
                 if resp.status != 200:
                     _LOGGER.warning(
                         "Failed to %s monitoring for %s: HTTP %s",
