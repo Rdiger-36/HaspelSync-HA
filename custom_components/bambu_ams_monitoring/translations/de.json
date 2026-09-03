@@ -10,24 +10,14 @@
       },
       "select_printers": {
         "title": "Drucker auswählen",
-        "description": "Wähle die Drucker aus, deren Monitoring-Status du steuern möchtest.\n\n{backend_dup_fixed}",
+        "description": "Wähle die Drucker aus, deren Monitoring-Status du steuern möchtest. Ein Drucker kann auch dann ausgewählt werden, wenn ihn bereits eine andere Instanz verwendet.",
         "data": {
           "printers": "Drucker"
         }
-      },
-      "fix_duplicates": {
-        "title": "Automatische Korrektur doppelter Drucker-IDs",
-        "description": "Es wurden doppelte Drucker-IDs erkannt und automatisch korrigiert:\n\n{duplicate_list}\n\nBitte überprüfe die Änderungen."
       }
-
     },
     "error": {
-      "cannot_connect": "Verbindung zum Backend fehlgeschlagen. Bitte überprüfe die URL.",
-      "printer_already_configured": "Einer oder mehrere ausgewählte Drucker sind bereits in einer anderen Instanz eingerichtet."
-    },
-    "abort": {
-      "already_configured": "Dieses Backend wurde bereits eingerichtet.",
-      "printer_already_configured": "Einer oder mehrere ausgewählte Drucker sind bereits in einer anderen Instanz eingerichtet."
+      "cannot_connect": "Verbindung zum Backend fehlgeschlagen. Bitte überprüfe die URL."
     }
   },
 
@@ -40,7 +30,9 @@
           "printers": "Drucker"
         }
       }
+    },
+    "error": {
+      "cannot_connect": "Verbindung zum Backend fehlgeschlagen. Die aktuell eingerichteten Drucker bleiben auswählbar."
     }
   }
-
 }

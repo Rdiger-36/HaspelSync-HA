@@ -10,24 +10,14 @@
       },
       "select_printers": {
         "title": "Select Printers",
-        "description": "Select the printers whose monitoring state you want to control.\n\n{backend_dup_fixed}",
+        "description": "Select the printers whose monitoring state you want to control. A printer can be selected here even if another integration instance already uses it.",
         "data": {
           "printers": "Printers"
         }
-      },
-      "fix_duplicates": {
-        "title": "Automatic duplicate printer ID correction",
-        "description": "Duplicate printer IDs were detected and automatically corrected:\n\n{duplicate_list}\n\nPlease review the changes."
       }
-
     },
     "error": {
-      "cannot_connect": "Could not connect to the backend. Please check the URL.",
-      "printer_already_configured": "One or more selected printers are already configured in another integration instance."
-    },
-    "abort": {
-      "already_configured": "This backend is already configured.",
-      "printer_already_configured": "One or more selected printers are already configured in another integration instance."
+      "cannot_connect": "Could not connect to the backend. Please check the URL."
     }
   },
 
@@ -40,7 +30,9 @@
           "printers": "Printers"
         }
       }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to the backend. The printers currently configured are still selectable."
     }
   }
-
 }
