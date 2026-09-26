@@ -100,9 +100,6 @@
       "print_end": {
         "name": "Druckende"
       },
-      "active_slot": {
-        "name": "Aktiver Slot"
-      },
       "last_print": {
         "name": "Letzter Druck"
       }

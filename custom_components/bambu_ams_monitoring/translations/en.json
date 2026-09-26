@@ -100,9 +100,6 @@
       "print_end": {
         "name": "Print end"
       },
-      "active_slot": {
-        "name": "Active slot"
-      },
       "last_print": {
         "name": "Last print"
       }

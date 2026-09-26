@@ -32,7 +32,7 @@ Eight endpoints, backend default port 4000. Every one of them needs an API key f
 | Call | Answer |
 |------|--------|
 | `GET /api/printers` | `[{"id": "...", "name": "..."}]` |
-| `GET /api/status/<id>` | `monitoringEnabled`, `mqttStatus`, `spoolmanStatus`, `lastMqttUpdate`, `lastMqttAmsUpdate`, `gcodeState`, `amsEnv`, `VERSION`, `MODE`, `LEGACY_MODE`, `SPOOLMAN_URL`, `activeSlot`, plus 404 when the ID is unknown |
+| `GET /api/status/<id>` | `monitoringEnabled`, `mqttStatus`, `spoolmanStatus`, `lastMqttUpdate`, `lastMqttAmsUpdate`, `gcodeState`, `amsEnv`, `VERSION`, `MODE`, `LEGACY_MODE`, `SPOOLMAN_URL`, plus 404 when the ID is unknown |
 | `GET /api/spools/<id>` | One entry per AMS slot: `amsId`, `slotState`, `slot`, `existingSpool`, `connectedViaTag`, `connectedViaMapping`, `archived`, `option`, `error`, `correctedRemain`, `amsWeight`, `filamentName`, `material`, `vendor`, `spoolmanId` |
 | `GET /api/print/<id>` | `gcodeState`, `jobName`, `layerNum`, `totalLayers`, `consumption`, `consumptionBooked`, `storagePresent`, `sliceFetch`, and while a print is active `stage`, `preparing`, `remainingMinutes`, `startedAt`, `estimatedEndAt`, the two times in epoch milliseconds. May fetch the sliced file over FTPS, so it is the slow one |
 | `POST /api/printer/<id>/monitoring/start` | `{"ok": true}`, or `{"ok": false, "message": "..."}` when it was already on |
@@ -44,7 +44,7 @@ A refused call is answered with HTTP 401 and a body carrying `apiKeyRequired` wh
 
 HTTP 403 means the backend refused the host name of the base URL. From 1.3.0 on it answers only to an IP address, `localhost`, a `.local` name and the names listed under Allowed host names on its settings page. It sends the same status for a cross site write, which a caller without an `Origin` header never triggers, so here 403 always means the host name. The flows show `host_not_allowed` for it and the coordinator logs the setting that fixes it.
 
-`slot` carries the tray fields the backend picks in `pickSlot()`, `src/uispool.js`. `tag_uid`, `tray_diameter`, `nozzle_temp_min`, `nozzle_temp_max`, `bed_temp`, `drying_temp`, `drying_time` and `k` arrive as numbers or null, and only from a backend that has them; an older one leaves them out, which reads as None here. `activeSlot` on the status is null while no filament is loaded and absent on such a backend.
+`slot` carries only the tray fields the backend picks in `pickSlot()`, `src/uispool.js`. The nozzle temperatures, the K value, the tag UID and the active tray that ha-bambulab shows are not among them, so they are not offered here either.
 
 `slot.tray_weight` is passed through as the printer sends it, a string such as `"1000"`, and an empty slot carries the number 0. `_grams()` in `sensor.py` reads it. `amsWeight` is the weight the backend derives from the RFID reading, null while there is none.
 
