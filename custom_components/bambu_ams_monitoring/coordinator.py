@@ -5,9 +5,11 @@ import aiohttp
 
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN, UPDATE_INTERVAL, REQUEST_TIMEOUT, EXTERNAL_SLOT
+from .api import auth_headers
+from .const import DOMAIN, UPDATE_INTERVAL, REQUEST_TIMEOUT, EXTERNAL_SLOT, HTTP_HOST_REFUSED
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,9 +31,10 @@ class AmsPrinterCoordinator(DataUpdateCoordinator):
     must not take the connection sensors down with it.
     """
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, session, base_url: str, printer_id: str, printer_name: str):
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, session, base_url: str, api_key: str, printer_id: str, printer_name: str):
         self.session = session
         self.base_url = base_url.rstrip("/")
+        self.api_key = api_key
         self.printer_id = printer_id
         self.printer_name = printer_name
         self.entry_id = entry.entry_id
@@ -61,18 +64,33 @@ class AmsPrinterCoordinator(DataUpdateCoordinator):
         A required endpoint that cannot be read raises UpdateFailed, which marks
         every entity of this printer unavailable. An optional one answers None,
         so the entities that do not depend on it keep their state.
+
+        A 401 is neither: the key was revoked or the backend started asking for
+        one, and no amount of retrying fixes that. It raises ConfigEntryAuthFailed
+        whatever the endpoint, which is what puts the reauth flow in front of the
+        user instead of a printer that is quietly unavailable forever.
         """
         url = f"{self.base_url}{path}"
         try:
             timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with self.session.get(url, timeout=timeout) as resp:
+            async with self.session.get(url, headers=auth_headers(self.api_key), timeout=timeout) as resp:
+                if resp.status == 401:
+                    raise ConfigEntryAuthFailed(f"{path} answered HTTP 401, the API key is not accepted")
+                if resp.status == HTTP_HOST_REFUSED:
+                    # Said in full because the log line is all a user sees of it,
+                    # and the fix is a setting on the backend rather than here.
+                    raise UpdateFailed(
+                        f"{path} answered HTTP 403: the backend does not allow the host name in "
+                        f"{self.base_url}. Add it under \"Allowed host names\" on its settings page, "
+                        "or configure the backend by its IP address"
+                    )
                 if resp.status != 200:
                     if required:
                         raise UpdateFailed(f"{path} answered HTTP {resp.status}")
                     _LOGGER.debug("%s answered HTTP %s", path, resp.status)
                     return None
                 return await resp.json()
-        except UpdateFailed:
+        except (UpdateFailed, ConfigEntryAuthFailed):
             raise
         except (aiohttp.ClientError, ValueError, TimeoutError) as err:
             if required:
@@ -103,13 +121,13 @@ class AmsPrinterCoordinator(DataUpdateCoordinator):
     def ams_units(self) -> dict:
         """Every AMS unit that reports environment readings, keyed by its letter.
 
-        The external spool holder is filtered out although it can appear as a
-        slot: it is not a unit and has neither humidity nor a dryer. An AMS Lite
+        The external spool holders are filtered out although they appear as
+        slots: they are not units and have neither humidity nor a dryer. An AMS Lite
         reports no readings at all and is therefore absent here as well, while
         its slots are present in `slots`.
         """
         return {
             unit["amsId"]: unit
             for unit in self.status.get("amsEnv") or []
-            if unit.get("amsId") and unit["amsId"] != EXTERNAL_SLOT
+            if unit.get("amsId") and not unit["amsId"].startswith(EXTERNAL_SLOT)
         }

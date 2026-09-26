@@ -33,7 +33,9 @@
 * Toggle monitoring per printer directly from Home Assistant
 * One sensor per AMS slot: filament, material, vendor, colour, remaining weight and the Spoolman link
 * Humidity, temperature and drying state per AMS unit
-* Print state and progress, plus connection sensors for the printer and for Spoolman
+* Print state, stage, progress, remaining time and expected end, plus connection sensors for the printer and for Spoolman
+* A warning when the printer has no USB stick or SD card, or the sliced file cannot be read, since nothing is booked then
+* Buttons to clear a finished print and to reconnect the printers
 * Auto-detects all available printers from your backend
 * Availability tracking: the entities show as unavailable if the backend is unreachable
 * Multi-printer support: add multiple printers in one integration instance, and the same printer in several instances
@@ -44,6 +46,7 @@
 | Requirement | Description |
 |---|---|
 | [bambulab-ams-spoolman-filamentstatus](https://github.com/Rdiger-36/bambulab-ams-spoolman-filamentstatus) | The backend service this integration connects to |
+| An API key of that backend | Backend 1.3.0 and newer answers its API only to the Web UI and to callers carrying a key. Create one on the settings page of the backend, under **Network access** |
 | [Spoolman](https://github.com/Donkie/Spoolman) | Filament management service |
 | [HACS](https://hacs.xyz/) | Required for installation in Home Assistant |
 | Home Assistant 2024.11 or newer | Older versions do not provide the config entry to the options flow, so editing the printer selection fails |
@@ -66,36 +69,51 @@ https://github.com/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus
    https://ams-server.example.com
    https://myserver.com/ams
    ```
-4. Select the printer(s) you want to monitor
-5. Enjoy your toggle switch
+4. Enter an API key of that backend. It is created on the backend settings page under **Network access**, starts with `ams_` and is shown only once, so copy it before closing the dialog
+5. Select the printer(s) you want to monitor
+6. Enjoy your toggle switch
+
+A backend older than 1.3.0 does not know API keys and ignores the one sent to it, so the field can be filled with anything there.
 
 ## Configuration
 
-After setup, you can edit the printer selection at any time:
+After setup, you can edit the printer selection and the API key at any time:
 
 1. Go to **Settings → Devices & Services**
 2. Find **Bambu AMS Monitoring** and click **Configure**
 3. Adjust your printer selection and save
 
+The key field of that dialog starts empty and the stored key is never shown. Leave it empty to keep the key the integration already holds, and fill it in only to replace it, for example after the key was revoked in the backend. A key the backend rejects is not saved, so the form comes back with the error rather than leaving the integration with a key that cannot work.
+
 ## Entities
 
-Every printer becomes one device. All of its entities are polled together every 30 seconds, which is the pace the backend itself works at.
+Every printer becomes one device, and every AMS unit a device of its own below it, the way ha-bambulab shows them. The slots of a unit sit on the unit, the external spool holders on the printer. All entities of a printer are polled together every 30 seconds, which is the pace the backend itself works at.
 
 Per printer:
 
 | Entity | Description |
 |---|---|
 | `switch.ams_monitoring_<printer_name>` | Enables or disables filament monitoring for this printer |
-| `sensor.<printer>_print_state` | The G-code state, with job name, layer and total layers as attributes |
+| `sensor.<printer>_print_state` | The G-code state, with job name, layers and the grams per filament the print needs and has used so far as attributes |
+| `sensor.<printer>_active_slot` | The slot feeding the printing nozzle, with its filament as attributes. Appears only once the backend reports the active slot, which no release does yet |
+| `sensor.<printer>_last_print` | How the last print ended, with its duration, error and what was booked on which spool as attributes |
 | `sensor.<printer>_print_progress` | The print progress in percent, derived from the layer count |
+| `sensor.<printer>_print_stage` | What the printer is doing, for example heating the bed, while a print is active |
+| `sensor.<printer>_print_time_remaining` | Minutes the printer still expects to need |
+| `sensor.<printer>_print_start` | When the backend first saw the print running |
+| `sensor.<printer>_print_end` | The expected end, empty while paused |
 | `sensor.<printer>_last_ams_update` | When the backend last processed AMS data of this printer |
 | `sensor.<printer>_last_printer_message` | When the last MQTT message arrived, diagnostic |
 | `sensor.<printer>_backend_version` | The backend version, with mode and Spoolman URL as attributes, diagnostic |
 | `binary_sensor.<printer>_printer_connection` | Whether the backend holds the MQTT connection, with the exact state as an attribute |
 | `binary_sensor.<printer>_spoolman_connection` | Whether the backend reaches Spoolman, diagnostic |
 | `binary_sensor.<printer>_needs_attention` | On when any slot reports an error or waits for an action, with the slot list as attributes |
+| `binary_sensor.<printer>_usb_stick_or_sd_card_missing` | On when the printer reports no storage. The sliced file is read from it, so nothing is booked without it |
+| `binary_sensor.<printer>_sliced_file_missing` | On when the backend could not read the sliced file of the running job, with the reason as an attribute |
+| `button.<printer>_clear_print_result` | Clears a finished print at once instead of after its countdown, refused while a print is active |
+| `button.<printer>_reconnect_printers` | Rebuilds the MQTT connections of every printer of the backend without a restart |
 
-Per AMS unit, for example A:
+Per AMS unit, for example A, on the device of that unit:
 
 | Entity | Description |
 |---|---|
@@ -107,16 +125,27 @@ Per AMS unit, for example A:
 
 The last two exist only on a unit with a dryer, an AMS 2 Pro or an AMS HT. An AMS Lite reports no readings at all, so it has none of these entities while its slots are still there.
 
-Per AMS slot, for example A1, and for the external spool holder:
+Per AMS slot, for example A1 on the device of unit A, and for the external spool holder on the printer:
 
 | Entity | Description |
 |---|---|
-| `sensor.<printer>_slot_a1` | The filament in the slot, with material, vendor, colour, weights, spool ID and slot state as attributes |
-| `sensor.<printer>_slot_a1_remaining_weight` | Grams left, from Spoolman where the slot is linked |
-| `sensor.<printer>_slot_a1_remaining` | The same figure in percent |
-| `binary_sensor.<printer>_slot_a1_problem` | On when the backend reports an error for the slot or the spool is archived |
-| `binary_sensor.<printer>_slot_a1_action_required` | On when a spool has to be created, merged or assigned in the backend Web UI |
-| `binary_sensor.<printer>_slot_a1_linked_to_spoolman` | Whether the slot is linked by RFID tag or by a manual assignment, diagnostic |
+| `sensor.<printer>_ams_a_slot_a1` | The filament in the slot, with everything known about it as attributes, see below |
+| `sensor.<printer>_ams_a_slot_a1_remaining_weight` | Grams left, from Spoolman where the slot is linked |
+| `sensor.<printer>_ams_a_slot_a1_remaining` | The same figure in percent |
+| `binary_sensor.<printer>_ams_a_slot_a1_problem` | On when the backend reports an error for the slot or the spool is archived |
+| `binary_sensor.<printer>_ams_a_slot_a1_action_required` | On when a spool has to be created, merged or assigned in the backend Web UI |
+| `binary_sensor.<printer>_ams_a_slot_a1_linked_to_spoolman` | Whether the slot is linked by RFID tag or by a manual assignment, diagnostic |
+
+The slot sensor carries the attributes ha-bambulab gives a tray under the same names where both have the value, so a card written for one reads the other:
+
+| Attributes | Source |
+|---|---|
+| `active`, `empty`, `name`, `type`, `color`, `colors`, `filament_id`, `remain`, `tray_weight`, `tray_uuid` | What the AMS reports for the slot. Colours as `#RRGGBB` |
+| `tag_uid`, `tray_diameter`, `nozzle_temp_min`, `nozzle_temp_max`, `bed_temp`, `dry_temp`, `dry_time`, `k_value` | The RFID tag and the printer's filament table. Empty on a backend that does not hand them out yet |
+| `preset_name`, `preset_vendor`, `sub_brand` | The filament profile, learned by the backend from a sliced file |
+| `remaining_weight`, `remaining_percentage`, `total_weight` | The figure the backend dashboard shows |
+| `spool_id`, `spoolman_filament_id`, `spoolman_initial_weight`, `spoolman_filament_weight`, `spoolman_color`, `spoolman_colors` | The linked Spoolman spool |
+| `connected_via_tag`, `connected_via_mapping`, `assigned_automatically`, `archived`, `action`, `error` | How the slot is linked and what the backend wants done with it |
 
 Slots and AMS units appear as soon as the backend reports them, so a unit plugged in later brings its entities with it without a reload.
 
@@ -129,11 +158,17 @@ The same printer may be configured in more than one integration instance, and th
 **Config flow fails to load**
 Make sure the backend is reachable at the URL you entered and responds at `/api/printers`.
 
+**Home Assistant asks to re-authenticate the integration**
+The backend answered with HTTP 401, which means it does not accept the API key any more: the key was revoked, or the backend was updated to 1.3.0 while this integration still held none. Create a key under **Network access** on the backend settings page and enter it in the dialog Home Assistant shows. Nothing else about the entry changes, and every entity keeps its history.
+
+**The backend refuses the host name**
+Backend 1.3.0 and newer answers only under its IP address, `localhost`, a `.local` name and the host names listed under **Allowed host names** on its settings page. Everything else is answered with HTTP 403, which the setup dialog reports as a refused host name and the log as a failed update. Add the name there, or enter the backend by its IP address.
+
 **Entities show as unavailable**
 Either the backend is not reachable, or it does not know the printer ID the entity was configured with. Check that the service is running and that the URL and port are correct:
 
 ```
-curl http://<backend>:4000/api/printers
+curl -H "Authorization: Bearer ams_your_key" http://<backend>:4000/api/printers
 ```
 
 The IDs in that answer are the ones the backend accepts. An ID left over from an earlier version of this integration is corrected automatically when the integration loads, so a reload of the integration is worth trying before anything else.
@@ -142,7 +177,7 @@ The IDs in that answer are the ones the backend accepts. An ID left over from an
 The backend reports slots only after its first AMS update, and it reports environment readings only for an AMS that has them. Turn monitoring on, wait for one update interval, and check what the backend answers:
 
 ```
-curl http://<backend>:4000/api/spools/<printer-id>
+curl -H "Authorization: Bearer ams_your_key" http://<backend>:4000/api/spools/<printer-id>
 ```
 
 **Changes after editing printers do not take effect**

@@ -2,10 +2,11 @@
   "config": {
     "step": {
       "user": {
-        "title": "Bambu AMS Monitoring – Einrichtung",
-        "description": "Gib die Basis-URL deines Bambu AMS Monitoring Backends ein.",
+        "title": "Bambu AMS Monitoring: Einrichtung",
+        "description": "Gib die Basis-URL deines Bambu AMS Monitoring Backends und einen API-Key ein. Den Key legst du auf der Einstellungsseite des Backends unter „Netzwerkzugriff“ an.",
         "data": {
-          "base_url": "Basis-URL"
+          "base_url": "Basis-URL",
+          "api_key": "API-Key"
         }
       },
       "select_printers": {
@@ -14,24 +15,39 @@
         "data": {
           "printers": "Drucker"
         }
+      },
+      "reauth_confirm": {
+        "title": "Bambu AMS Monitoring: Neuer API-Key",
+        "description": "Das Backend unter {base_url} akzeptiert den API-Key dieser Integration nicht mehr. Lege auf seiner Einstellungsseite unter „Netzwerkzugriff“ einen neuen Key an und trage ihn hier ein.",
+        "data": {
+          "api_key": "API-Key"
+        }
       }
     },
     "error": {
-      "cannot_connect": "Verbindung zum Backend fehlgeschlagen. Bitte überprüfe die URL."
+      "cannot_connect": "Verbindung zum Backend fehlgeschlagen. Bitte überprüfe die URL.",
+      "invalid_auth": "Das Backend hat diesen API-Key nicht akzeptiert. Lege auf seiner Einstellungsseite unter „Netzwerkzugriff“ einen an.",
+      "host_not_allowed": "Das Backend lehnt den Hostnamen in dieser URL ab. Trage ihn auf seiner Einstellungsseite unter „Erlaubte Hostnamen“ ein oder gib das Backend mit seiner IP-Adresse an."
+    },
+    "abort": {
+      "reauth_successful": "Der neue API-Key wird akzeptiert."
     }
   },
   "options": {
     "step": {
       "edit_printers": {
         "title": "Druckerauswahl bearbeiten",
-        "description": "Wähle die Drucker aus, die diese Integration überwachen soll.",
+        "description": "Wähle die Drucker aus, die diese Integration überwachen soll. Lass den API-Key leer, um den bisherigen zu behalten, und trage nur dann etwas ein, wenn du ihn ersetzen willst.",
         "data": {
+          "api_key": "Neuer API-Key",
           "printers": "Drucker"
         }
       }
     },
     "error": {
-      "cannot_connect": "Verbindung zum Backend fehlgeschlagen. Die aktuell eingerichteten Drucker bleiben auswählbar."
+      "cannot_connect": "Verbindung zum Backend fehlgeschlagen. Die aktuell eingerichteten Drucker bleiben auswählbar.",
+      "invalid_auth": "Das Backend hat diesen API-Key nicht akzeptiert, es wurde nichts gespeichert. Lege auf seiner Einstellungsseite unter „Netzwerkzugriff“ einen an.",
+      "host_not_allowed": "Das Backend lehnt den Hostnamen ab, unter dem es eingerichtet ist. Trage ihn auf seiner Einstellungsseite unter „Erlaubte Hostnamen“ ein. Die bisher eingerichteten Drucker bleiben auswählbar."
     }
   },
   "entity": {
@@ -52,16 +68,16 @@
         "name": "Backend Version"
       },
       "ams_humidity": {
-        "name": "AMS {ams} Luftfeuchtigkeit"
+        "name": "Luftfeuchtigkeit"
       },
       "ams_humidity_level": {
-        "name": "AMS {ams} Feuchtigkeitsstufe"
+        "name": "Feuchtigkeitsstufe"
       },
       "ams_temperature": {
-        "name": "AMS {ams} Temperatur"
+        "name": "Temperatur"
       },
       "ams_drying_remaining": {
-        "name": "AMS {ams} Restzeit Trocknung"
+        "name": "Restzeit Trocknung"
       },
       "slot": {
         "name": "Slot {slot}"
@@ -71,6 +87,24 @@
       },
       "slot_remaining_percentage": {
         "name": "Slot {slot} Restmenge"
+      },
+      "print_stage": {
+        "name": "Druckphase"
+      },
+      "print_remaining_time": {
+        "name": "Verbleibende Druckzeit"
+      },
+      "print_start": {
+        "name": "Druckbeginn"
+      },
+      "print_end": {
+        "name": "Druckende"
+      },
+      "active_slot": {
+        "name": "Aktiver Slot"
+      },
+      "last_print": {
+        "name": "Letzter Druck"
       }
     },
     "binary_sensor": {
@@ -84,7 +118,7 @@
         "name": "Handlung erforderlich"
       },
       "ams_drying": {
-        "name": "AMS {ams} trocknet"
+        "name": "Trocknet"
       },
       "slot_problem": {
         "name": "Slot {slot} Problem"
@@ -94,6 +128,20 @@
       },
       "slot_linked": {
         "name": "Slot {slot} mit Spoolman verknüpft"
+      },
+      "storage_missing": {
+        "name": "USB-Stick oder SD-Karte fehlt"
+      },
+      "slice_file_missing": {
+        "name": "Slicer-Datei fehlt"
+      }
+    },
+    "button": {
+      "clear_print_result": {
+        "name": "Druckergebnis löschen"
+      },
+      "reconnect": {
+        "name": "Drucker neu verbinden"
       }
     }
   }

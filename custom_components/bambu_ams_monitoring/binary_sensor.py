@@ -11,8 +11,8 @@ from .entity import AmsEntity, AmsSlotEntity, AmsUnitEntity, async_track_members
 def _needs_work(slot: dict) -> bool:
     """Says whether the backend offers an action for this slot.
 
-    The backend sends the button label rather than a key, so the three labels
-    that mean there is nothing to do are what is compared against. A slot
+    The backend sends the button label rather than a key, so the labels that
+    mean there is nothing to do are what is compared against. A slot
     without a label at all has not been evaluated yet, which is not work either.
     """
     option = slot.get("option")
@@ -28,6 +28,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
         entities.append(AmsMqttConnectedSensor(coordinator))
         entities.append(AmsSpoolmanConnectedSensor(coordinator))
         entities.append(AmsAttentionSensor(coordinator))
+        entities.append(AmsStorageMissingSensor(coordinator))
+        entities.append(AmsSliceFileMissingSensor(coordinator))
     async_add_entities(entities)
 
     for coordinator in coordinators.values():
@@ -137,6 +139,63 @@ class AmsAttentionSensor(AmsEntity, BinarySensorEntity):
             for ams_id, slot in self.coordinator.slots.items()
             if _needs_work(slot)
         )
+
+
+class AmsStorageMissingSensor(AmsEntity, BinarySensorEntity):
+    """Whether the printer reports no USB stick or SD card.
+
+    That storage is where the backend reads the sliced file from, and without
+    the file no consumption is booked. The second generation printers keep
+    printing without it, which is what makes the case silent, so it is worth
+    an entity an automation can warn on before the print starts.
+    """
+
+    _attr_translation_key = "storage_missing"
+    _attr_device_class = BinarySensorDeviceClass.PROBLEM
+
+    def __init__(self, coordinator):
+        super().__init__(coordinator, "storage_missing")
+
+    @property
+    def is_on(self):
+        # Null until a printer report carried the field, which is unknown here
+        # rather than a claim either way.
+        present = self.coordinator.print_job.get("storagePresent")
+        return None if present is None else not present
+
+
+class AmsSliceFileMissingSensor(AmsEntity, BinarySensorEntity):
+    """Whether the backend could not read the sliced file of the running job.
+
+    The backend retries the lookup a few times. The reason is the printer's own
+    answer per path it tried, which is what tells a missing stick from a file
+    that was never there.
+    """
+
+    _attr_translation_key = "slice_file_missing"
+    _attr_device_class = BinarySensorDeviceClass.PROBLEM
+
+    def __init__(self, coordinator):
+        super().__init__(coordinator, "slice_file_missing")
+
+    @property
+    def is_on(self):
+        return self._fetch is not None
+
+    @property
+    def extra_state_attributes(self):
+        fetch = self._fetch or {}
+        return {
+            "reason": fetch.get("reason"),
+            "attempt": fetch.get("attempt"),
+            "attempts": fetch.get("attempts"),
+            "final": fetch.get("final"),
+        }
+
+    @property
+    def _fetch(self):
+        """The sliceFetch block, present only while a lookup has failed."""
+        return self.coordinator.print_job.get("sliceFetch")
 
 
 class AmsDryingSensor(AmsUnitEntity, BinarySensorEntity):

@@ -1,10 +1,9 @@
 import logging
 
-import aiohttp
-
 from homeassistant.components.switch import SwitchEntity
 
-from .const import DOMAIN, DATA_COORDINATORS, REQUEST_TIMEOUT
+from .api import BackendUnreachable, async_post_action
+from .const import DOMAIN, DATA_COORDINATORS
 from .entity import AmsEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,25 +49,22 @@ class AmsPrinterSwitch(AmsEntity, SwitchEntity):
         happened. Either way the coordinator refreshes, which is what puts the
         switch on the state the backend actually holds rather than on the one
         this call assumed.
+
+        A 401 is left to that refresh as well: the coordinator turns it into the
+        reauth flow, and raising it from a toggle would only tell the one person
+        who happened to press the switch.
         """
-        url = f"{self.coordinator.base_url}/api/printer/{self.coordinator.printer_id}/monitoring/{action}"
+        coordinator = self.coordinator
+        path = f"/api/printer/{coordinator.printer_id}/monitoring/{action}"
 
         try:
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with self.coordinator.session.post(url, timeout=timeout) as resp:
-                if resp.status != 200:
-                    _LOGGER.warning(
-                        "Failed to %s monitoring for %s: HTTP %s",
-                        action, self.coordinator.printer_id, resp.status,
-                    )
-                else:
-                    body = await resp.json(content_type=None)
-                    if isinstance(body, dict) and body.get("ok") is False:
-                        _LOGGER.debug(
-                            "Backend did not %s monitoring for %s: %s",
-                            action, self.coordinator.printer_id, body.get("message"),
-                        )
-        except (aiohttp.ClientError, ValueError, TimeoutError) as err:
-            _LOGGER.error("Error while sending %s for %s: %s", action, self.coordinator.printer_id, err)
+            status, body = await async_post_action(coordinator.session, coordinator.base_url, coordinator.api_key, path)
+        except BackendUnreachable as err:
+            _LOGGER.error("Error while sending %s for %s: %s", action, coordinator.printer_id, err)
+        else:
+            if status != 200:
+                _LOGGER.warning("Failed to %s monitoring for %s: HTTP %s", action, coordinator.printer_id, status)
+            elif body.get("ok") is False:
+                _LOGGER.debug("Backend did not %s monitoring for %s: %s", action, coordinator.printer_id, body.get("message"))
 
         await self.coordinator.async_request_refresh()

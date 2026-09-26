@@ -2,10 +2,11 @@
   "config": {
     "step": {
       "user": {
-        "title": "Bambu AMS Monitoring – Setup",
-        "description": "Enter the base URL of your Bambu AMS Monitoring backend.",
+        "title": "Bambu AMS Monitoring: Setup",
+        "description": "Enter the base URL of your Bambu AMS Monitoring backend and an API key. Create the key on the settings page of the backend, under \"Network access\".",
         "data": {
-          "base_url": "Base URL"
+          "base_url": "Base URL",
+          "api_key": "API key"
         }
       },
       "select_printers": {
@@ -14,24 +15,39 @@
         "data": {
           "printers": "Printers"
         }
+      },
+      "reauth_confirm": {
+        "title": "Bambu AMS Monitoring: New API Key",
+        "description": "The backend at {base_url} no longer accepts the API key of this integration. Create a new key under \"Network access\" on its settings page and enter it here.",
+        "data": {
+          "api_key": "API key"
+        }
       }
     },
     "error": {
-      "cannot_connect": "Could not connect to the backend. Please check the URL."
+      "cannot_connect": "Could not connect to the backend. Please check the URL.",
+      "invalid_auth": "The backend did not accept this API key. Create one under \"Network access\" on its settings page.",
+      "host_not_allowed": "The backend refused the host name in this URL. Add it under \"Allowed host names\" on its settings page, or enter the backend by its IP address."
+    },
+    "abort": {
+      "reauth_successful": "The new API key is accepted."
     }
   },
   "options": {
     "step": {
       "edit_printers": {
         "title": "Edit Printers",
-        "description": "Select the printers this integration should monitor.",
+        "description": "Select the printers this integration should monitor. Leave the API key empty to keep the one this entry already holds, and fill it in only to replace that key.",
         "data": {
+          "api_key": "New API key",
           "printers": "Printers"
         }
       }
     },
     "error": {
-      "cannot_connect": "Could not connect to the backend. The printers currently configured are still selectable."
+      "cannot_connect": "Could not connect to the backend. The printers currently configured are still selectable.",
+      "invalid_auth": "The backend did not accept this API key, so nothing was saved. Create one under \"Network access\" on its settings page.",
+      "host_not_allowed": "The backend refused the host name it is configured under. Add it under \"Allowed host names\" on its settings page. The printers currently configured are still selectable."
     }
   },
   "entity": {
@@ -52,16 +68,16 @@
         "name": "Backend version"
       },
       "ams_humidity": {
-        "name": "AMS {ams} humidity"
+        "name": "Humidity"
       },
       "ams_humidity_level": {
-        "name": "AMS {ams} humidity level"
+        "name": "Humidity level"
       },
       "ams_temperature": {
-        "name": "AMS {ams} temperature"
+        "name": "Temperature"
       },
       "ams_drying_remaining": {
-        "name": "AMS {ams} drying remaining"
+        "name": "Drying remaining"
       },
       "slot": {
         "name": "Slot {slot}"
@@ -71,6 +87,24 @@
       },
       "slot_remaining_percentage": {
         "name": "Slot {slot} remaining"
+      },
+      "print_stage": {
+        "name": "Print stage"
+      },
+      "print_remaining_time": {
+        "name": "Print time remaining"
+      },
+      "print_start": {
+        "name": "Print start"
+      },
+      "print_end": {
+        "name": "Print end"
+      },
+      "active_slot": {
+        "name": "Active slot"
+      },
+      "last_print": {
+        "name": "Last print"
       }
     },
     "binary_sensor": {
@@ -84,7 +118,7 @@
         "name": "Needs attention"
       },
       "ams_drying": {
-        "name": "AMS {ams} drying"
+        "name": "Drying"
       },
       "slot_problem": {
         "name": "Slot {slot} problem"
@@ -94,6 +128,20 @@
       },
       "slot_linked": {
         "name": "Slot {slot} linked to Spoolman"
+      },
+      "storage_missing": {
+        "name": "USB stick or SD card missing"
+      },
+      "slice_file_missing": {
+        "name": "Sliced file missing"
+      }
+    },
+    "button": {
+      "clear_print_result": {
+        "name": "Clear print result"
+      },
+      "reconnect": {
+        "name": "Reconnect printers"
       }
     }
   }

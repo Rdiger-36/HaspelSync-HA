@@ -13,30 +13,44 @@ The whole integration is roughly 5k tokens in a single package, so it carries no
 | File | Role |
 |------|------|
 | `custom_components/bambu_ams_monitoring/__init__.py` | Sets up and unloads a config entry, repairs stored printer IDs, migrates entity unique IDs |
-| `custom_components/bambu_ams_monitoring/config_flow.py` | Two step setup: base URL, then printer selection |
-| `custom_components/bambu_ams_monitoring/options_flow.py` | Edits the printer selection of an existing entry |
+| `custom_components/bambu_ams_monitoring/api.py` | Auth header and the printer list read, shared by both flows and the setup |
+| `custom_components/bambu_ams_monitoring/config_flow.py` | Two step setup: base URL and API key, then printer selection, plus the reauth step |
+| `custom_components/bambu_ams_monitoring/options_flow.py` | Edits the printer selection of an existing entry, and replaces its API key when the key field is filled in |
 | `custom_components/bambu_ams_monitoring/coordinator.py` | One `DataUpdateCoordinator` per printer, polls status, spools and print job |
 | `custom_components/bambu_ams_monitoring/entity.py` | Entity bases for a printer, an AMS unit and a slot, plus the discovery helper |
 | `custom_components/bambu_ams_monitoring/switch.py` | One `SwitchEntity` per configured printer |
 | `custom_components/bambu_ams_monitoring/sensor.py` | Printer, AMS unit and slot sensors |
-| `custom_components/bambu_ams_monitoring/binary_sensor.py` | Connection, attention, drying and slot state binary sensors |
+| `custom_components/bambu_ams_monitoring/binary_sensor.py` | Connection, attention, storage, sliced file, drying and slot state binary sensors |
+| `custom_components/bambu_ams_monitoring/button.py` | Clear print result and reconnect buttons per printer |
 | `custom_components/bambu_ams_monitoring/const.py` | Domain, config keys, platform list and polling constants |
 | `custom_components/bambu_ams_monitoring/translations/` | English and German strings, keys must match the step and error IDs in both flows |
 
 ## Backend Contract
 
-Six endpoints, all unauthenticated, backend default port 4000:
+Eight endpoints, backend default port 4000. Every one of them needs an API key from backend 1.3.0 on: the backend answers `/api/` only to its own Web UI and to a caller carrying a key, whether or not a Web UI password is set. The key travels as `Authorization: Bearer <key>`, is created on the backend settings page under Network access and starts with `ams_`. A backend older than that ignores the header, which is why an entry without a key is not repaired into one until a request is actually refused.
 
 | Call | Answer |
 |------|--------|
 | `GET /api/printers` | `[{"id": "...", "name": "..."}]` |
-| `GET /api/status/<id>` | `monitoringEnabled`, `mqttStatus`, `spoolmanStatus`, `lastMqttUpdate`, `lastMqttAmsUpdate`, `gcodeState`, `amsEnv`, `VERSION`, `MODE`, `LEGACY_MODE`, plus 404 when the ID is unknown |
-| `GET /api/spools/<id>` | One entry per AMS slot: `amsId`, `slotState`, `slot`, `existingSpool`, `connectedViaTag`, `connectedViaMapping`, `archived`, `option`, `error`, `correctedRemain`, `correctedWeight` |
-| `GET /api/print/<id>` | `gcodeState`, `jobName`, `layerNum`, `totalLayers`, `consumption`, `consumptionBooked`. May fetch the sliced file over FTPS, so it is the slow one |
+| `GET /api/status/<id>` | `monitoringEnabled`, `mqttStatus`, `spoolmanStatus`, `lastMqttUpdate`, `lastMqttAmsUpdate`, `gcodeState`, `amsEnv`, `VERSION`, `MODE`, `LEGACY_MODE`, `SPOOLMAN_URL`, `activeSlot` once the backend has it, plus 404 when the ID is unknown |
+| `GET /api/spools/<id>` | One entry per AMS slot: `amsId`, `slotState`, `slot`, `existingSpool`, `connectedViaTag`, `connectedViaMapping`, `archived`, `option`, `error`, `correctedRemain`, `amsWeight`, `filamentName`, `material`, `vendor`, `spoolmanId` |
+| `GET /api/print/<id>` | `gcodeState`, `jobName`, `layerNum`, `totalLayers`, `consumption`, `consumptionBooked`, `storagePresent`, `sliceFetch`, and while a print is active `stage`, `preparing`, `remainingMinutes`, `startedAt`, `estimatedEndAt`, the two times in epoch milliseconds. May fetch the sliced file over FTPS, so it is the slow one |
 | `POST /api/printer/<id>/monitoring/start` | `{"ok": true}`, or `{"ok": false, "message": "..."}` when it was already on |
 | `POST /api/printer/<id>/monitoring/stop` | Same shape |
+| `POST /api/print/<id>/clear` | `{"ok": true}`, or HTTP 409 with `{"ok": false, "error": "..."}` while a print is active |
+| `POST /api/printers/reconnect` | `{"ok": true, "reconnected": [...], "skipped": n}`, acts on every printer of the backend at once |
 
-`amsId` is the slot label the backend builds, `A1` to `D4`, `HT-A` for an AMS HT and `External` for the spool holder. An `amsEnv` entry carries the unit letter alone. The backend defines both in `src/utils.js`, `convertAMSandSlot()`.
+A refused call is answered with HTTP 401 and a body carrying `apiKeyRequired` when no Web UI password is set, `authRequired` when one is. Neither field is read here: the status code alone decides, because both mean the same thing for a caller that has no browser.
+
+HTTP 403 means the backend refused the host name of the base URL. From 1.3.0 on it answers only to an IP address, `localhost`, a `.local` name and the names listed under Allowed host names on its settings page. It sends the same status for a cross site write, which a caller without an `Origin` header never triggers, so here 403 always means the host name. The flows show `host_not_allowed` for it and the coordinator logs the setting that fixes it.
+
+`slot` carries the tray fields the backend picks in `pickSlot()`, `src/uispool.js`. Read ahead of the backend: `tag_uid`, `tray_diameter`, `nozzle_temp_min`, `nozzle_temp_max`, `bed_temp`, `drying_temp`, `drying_time` and `k` in `slot`, as numbers or null, and `activeSlot` on the status, the slot label or null while nothing is loaded. No backend release hands them out yet. Until one does the slot attributes read None, `active` is None rather than False, and the active slot sensor is not created at all: it is discovered once `activeSlot` appears on the status.
+
+`slot.tray_weight` is passed through as the printer sends it, a string such as `"1000"`, and an empty slot carries the number 0. `_grams()` in `sensor.py` reads it. `amsWeight` is the weight the backend derives from the RFID reading, null while there is none.
+
+The backend publishes the whole contract as OpenAPI at `GET /api/openapi.json`.
+
+`amsId` is the slot label the backend builds, `A1` to `D4`, `HT-A` for an AMS HT, `External` for the spool holder and `External-2` for the second holder of a dual nozzle printer. An `amsEnv` entry carries the unit letter alone, plus the `model` the printer reports for it. The backend defines both in `src/utils.js`, `convertAMSandSlot()`.
 
 The backend upper cases every printer serial it stores, and it resolves `<id>` by exact match against its own list.
 
@@ -44,12 +58,15 @@ The backend upper cases every printer serial it stores, and it resolves `<id>` b
 
 - A printer ID is used exactly as `GET /api/printers` reports it. Never rewrite, suffix or case fold one before sending it. An invented ID answers 404 forever and its switch stays permanently unavailable, which is the bug the duplicate handling in the config flow used to cause.
 - Entity unique IDs are scoped to the config entry: `{entry_id}_ams_monitoring_{printer_id}`. The same printer may be configured in several instances, and Home Assistant drops the second entity of a duplicate unique ID.
-- The device identifier stays `(DOMAIN, printer_id)`, so all instances holding one printer attach to a single device.
+- The device identifier stays `(DOMAIN, printer_id)`, so all instances holding one printer attach to a single device. An AMS unit is a device of its own, `(DOMAIN, f"{printer_id}_ams_{unit}")` with the printer as `via_device`, built by `ams_device_info()` in `entity.py`. Its readings and the slots of the unit attach to it, the external holders stay on the printer.
 - Nothing aborts on a duplicate: neither a base URL that is already configured nor a printer that another entry already holds.
 - Changing a unique ID scheme or an ID stored in an entry requires a migration in `__init__.py`. Without one, existing installations lose their entity ID and their history.
+- A 401 is not a connection problem and is never retried into one. Everything that talks to the backend turns it into `ConfigEntryAuthFailed`, which is what puts the reauth step in front of the user. An entry set up before the backend asked for a key holds none, so this is also the upgrade path of every existing installation.
+- The API key field of the options flow is empty on every render and the stored key is never put into it. An empty field means the stored key is kept, so it can never mean the key was cleared, and a screenshot of that dialog carries no secret.
+- The API key is optional in the stored entry data and read with `entry.data.get()`. An entry written before it existed carries no key, and a backend older than 1.3.0 needs none.
 - An unreachable backend must never shrink an entry. The options flow keeps configured printers selectable when the printer list cannot be fetched, and a backend that is down at setup leaves the entry loaded with unavailable entities rather than raising `ConfigEntryNotReady`.
 - `/api/status` decides whether a printer is reachable. The spool and print endpoints are allowed to fail on their own, so a slow sliced file cannot take the connection sensors down.
-- The remaining weight and percentage of a slot follow the same resolution the backend dashboard makes, see `_remaining()` in `sensor.py`. Both have to keep agreeing, otherwise the same spool reads differently in the two places. The single deviation is the AMS reading of -1, which means no reading and becomes an empty state here rather than a negative percentage.
+- The remaining weight and percentage of a slot follow the same resolution the backend dashboard makes, see `_remaining()` in `sensor.py`. Both have to keep agreeing, otherwise the same spool reads differently in the two places. A slot counts as linked there when it is linked by tag, by mapping or holds an archived spool. The single deviation is the AMS reading of -1, which means no reading and becomes an empty state here rather than a negative percentage.
 - Slots and AMS units are discovered on every coordinator update, not only at setup. The backend answers with an empty spool list until its first AMS update, so entities built once at setup would be missing on a fresh install.
 - The options flow relies on the `config_entry` property of its base class, which needs Home Assistant 2024.11. Assigning `self.config_entry` is removed in 2025.12. `hacs.json` pins that minimum.
 - `manifest.json` `version` and the git tag belong together. HACS reads the manifest.
@@ -61,17 +78,18 @@ Adding a platform, for example a number:
 1. Write the platform module next to `switch.py`.
 2. Add it to `PLATFORMS` in `const.py`, which both `async_forward_entry_setups` and `async_unload_platforms` read.
 3. Derive from `AmsEntity`, `AmsUnitEntity` or `AmsSlotEntity` in `entity.py`. They build the unique ID as `{entry_id}_{key}_{printer_id}`, attach the printer device and answer availability.
-4. Read from the coordinator rather than from the network. Nothing below `coordinator.py` opens an HTTP request of its own, apart from the switch, which posts an action.
+4. Read from the coordinator rather than from the network. Nothing below `coordinator.py` opens an HTTP request of its own, apart from the switch and the buttons, which post an action through `async_post_action()` in `api.py`.
 
 Adding an entity that exists per slot or per AMS unit: register it in the `async_track_members` call of its platform, so it appears with a unit that is plugged in later.
 
-Adding a value to an entity: give every new entity a `translation_key` and add its name to both translation files under `entity`. A slot or unit name uses the `{slot}` or `{ams}` placeholder, which the entity bases fill in.
+Adding a value to an entity: give every new entity a `translation_key` and add its name to both translation files under `entity`. A slot name uses the `{slot}` placeholder, which the entity base fills in, because four slots share one AMS device. A unit entity needs none: its device already names the unit.
 
 Adding a flow step: add the step ID and every data key to both `translations/en.json` and `translations/de.json`. A missing key shows up as a raw key in the UI.
 
 ## Anti-patterns
 
-- Do not open an `aiohttp.ClientSession` in the entity layer. The shared Home Assistant session is passed in.
+- Do not open an `aiohttp.ClientSession` in the entity layer, and no longer in a flow either. The shared Home Assistant session is passed in or taken from `async_get_clientsession()`.
+- Do not send a request to the backend without `auth_headers()`. Every call needs the key, and a new call site that forgets it fails only on an installation that has one.
 - Do not treat HTTP 200 alone as success on the start and stop endpoints. They answer `ok: false` when the state was already set.
 - Do not make the config flow claim a unique ID. That would block the second instance for a printer or a backend.
 - Do not add blocking IO to the update path. It runs on the event loop.
@@ -121,7 +139,7 @@ There is no test suite and the code cannot run outside Home Assistant. Before ha
 
 1. `python3 -m py_compile custom_components/bambu_ams_monitoring/*.py`
 2. Load the integration in a real Home Assistant, check the log for the ID repair line, toggle a switch, then add a second instance holding the same printer and confirm both switches appear and follow each other.
-3. Reach the backend directly to tell an integration bug from a backend one: `curl http://<backend>:4000/api/printers`
+3. Reach the backend directly to tell an integration bug from a backend one: `curl -H "Authorization: Bearer ams_<key>" http://<backend>:4000/api/printers`. Without the header a backend from 1.3.0 on answers 401, which says nothing about the integration.
 
 ## Related Context
 

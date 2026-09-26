@@ -2,15 +2,51 @@ from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, EXTERNAL_SLOT
 from .coordinator import AmsPrinterCoordinator
+
+
+def ams_unit_of(ams_id: str) -> str | None:
+    """The AMS unit a slot label belongs to, or None for an external holder.
+
+    A1 belongs to A. An AMS HT has a single slot and its label is the unit
+    itself, HT-A. The external holders, External and External-2, belong to no
+    unit and stay on the printer device.
+    """
+    if ams_id.startswith(EXTERNAL_SLOT):
+        return None
+    if ams_id.startswith("HT-"):
+        return ams_id
+    return ams_id.rstrip("0123456789") or None
+
+
+def ams_device_info(coordinator: AmsPrinterCoordinator, unit: str) -> DeviceInfo:
+    """The device of one AMS unit, attached below its printer.
+
+    One device per unit, the way ha-bambulab shows them, so four slots and the
+    readings of one AMS sit together instead of every slot of every unit on the
+    printer. The identifier carries the printer ID, because the unit letter
+    alone repeats on every printer, and it is the same in every integration
+    instance holding the printer, which keeps one device for all of them.
+    """
+    return DeviceInfo(
+        identifiers={(DOMAIN, f"{coordinator.printer_id}_ams_{unit}")},
+        name=f"{coordinator.printer_name} AMS {unit}",
+        manufacturer="Bambu Lab",
+        # Read once when the entity is added. An AMS Lite reports no readings
+        # and therefore no model, and the backend learns the model of the others
+        # only after asking the printer, so it may still be missing here.
+        model=(coordinator.ams_units.get(unit) or {}).get("model"),
+        via_device=(DOMAIN, coordinator.printer_id),
+    )
 
 
 class AmsEntity(CoordinatorEntity):
     """Base for everything this integration reads out of one printer.
 
-    Every entity of a printer attaches to the same device, so a slot sensor, an
-    AMS humidity reading and the monitoring switch sit together. The unique ID
+    Every entity of a printer attaches to the printer device, apart from those
+    of an AMS unit and its slots, which attach to the device of that unit. The
+    unique ID
     keeps the shape the switch has always used, `{entry_id}_{key}_{printer_id}`,
     because the entry scope is what lets the same printer be configured in
     several integration instances.
@@ -36,6 +72,9 @@ class AmsSlotEntity(AmsEntity):
         super().__init__(coordinator, f"{key}_{ams_id}")
         self._ams_id = ams_id
         self._attr_translation_placeholders = {"slot": ams_id}
+        unit = ams_unit_of(ams_id)
+        if unit:
+            self._attr_device_info = ams_device_info(coordinator, unit)
 
     @property
     def slot(self) -> dict:
@@ -57,6 +96,7 @@ class AmsUnitEntity(AmsEntity):
         super().__init__(coordinator, f"{key}_{ams_id}")
         self._ams_id = ams_id
         self._attr_translation_placeholders = {"ams": ams_id}
+        self._attr_device_info = ams_device_info(coordinator, ams_id)
 
     @property
     def unit(self) -> dict:
