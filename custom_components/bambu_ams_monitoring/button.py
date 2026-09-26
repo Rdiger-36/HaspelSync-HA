@@ -36,7 +36,11 @@ class AmsActionButton(AmsEntity, ButtonEntity):
         try:
             status, body = await async_post_action(coordinator.session, coordinator.base_url, coordinator.api_key, self._path())
         except BackendUnreachable as err:
-            raise HomeAssistantError(f"The backend could not be reached: {err}") from err
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="backend_unreachable",
+                translation_placeholders={"error": str(err)},
+            ) from err
         finally:
             # Also after a failure: a refused key reaches the reauth flow through
             # the refresh, and a refused action still leaves a state worth reading.
@@ -44,7 +48,13 @@ class AmsActionButton(AmsEntity, ButtonEntity):
 
         if status != 200 or body.get("ok") is False:
             message = body.get("error") or body.get("message") or f"HTTP {status}"
-            raise HomeAssistantError(f"The backend refused the action: {message}")
+            # The backend's own reason stays in English: it is the sentence the
+            # backend writes, and only the frame around it is translated.
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="action_refused",
+                translation_placeholders={"message": message},
+            )
 
 
 class AmsClearPrintResultButton(AmsActionButton):

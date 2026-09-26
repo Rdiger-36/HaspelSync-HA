@@ -84,6 +84,8 @@ Adding an entity that exists per slot or per AMS unit: register it in the `async
 
 Adding a value to an entity: give every new entity a `translation_key` and add its name to both translation files under `entity`. A slot name uses the `{slot}` placeholder, which the entity base fills in, because four slots share one AMS device. A unit entity needs none: its device already names the unit.
 
+Raising an error to the user, from a button for example: raise `HomeAssistantError` with `translation_domain=DOMAIN` and a `translation_key`, and add the message to both translation files under `exceptions`. A message written into the code stays English whatever language is set.
+
 Adding a flow step: add the step ID and every data key to both `translations/en.json` and `translations/de.json`. A missing key shows up as a raw key in the UI.
 
 ## Anti-patterns
