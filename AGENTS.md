@@ -79,19 +79,39 @@ Adding a flow step: add the step ID and every data key to both `translations/en.
 
 ## House Rules
 
+### Language
+
+- Identifiers, code comments, log messages, commit messages and pull request text are written in English. User facing strings live in `translations/`, English and German.
+
+### Punctuation
+
 - Never use a dash as punctuation, neither an em dash nor a standalone hyphen. This covers UI strings, doc comments, inline comments, log messages, commit messages and pull request text. Use a comma, colon or full stop.
+- Not punctuation, and therefore allowed: a hyphen inside a compound word (`3rd-party`, `API-Key` in German strings), and the hyphen as a structural marker, such as a bullet in a list.
+
+### Comments
+
 - Every function gets a comment block saying what it does. Go deep only where the behaviour is not obvious, one line for self explanatory members. Document parameters and return values only where they add something the signature does not say.
 - Inline comments carry the WHY: a hidden constraint, a workaround, a subtle invariant. Never restate the code.
-- Branch before changing anything while on `main`. Name the branch after everything it ends up holding.
-- Never open a pull request without an explicit go ahead for that specific pull request.
-- GUI and design changes, and changes touching many references, are discussed before they are applied.
+
+### Git
+
+- Commits and pull requests carry no attribution: no `Co-Authored-By` trailer in a commit message and no "Generated with Claude Code" line in a pull request description. The repository is the owner's, and those lines are noise in the history and in the release notes.
+- Commit messages are short. The subject names the change itself with a `feat:`, `fix:`, `docs:` or `chore:` prefix. A body only where the why is not obvious, and then a few lines at most.
+- Branch before changing anything while on `main`. Name the branch after everything it ends up holding, and rename it when the scope grows. Rename it before its pull request is opened: GitHub closes an open pull request whose head branch is renamed.
+- Never open a pull request without an explicit go ahead for that specific pull request. A general permission is not a standing one, so ask again for the next. A merged pull request is a status, not a request for the next step.
+- A version bump and the tag that publishes it wait for the same explicit go, because the owner decides when a build is cut and what goes into it.
 - The git remote is named `main`, not `origin`. Push with `git push -u main <branch>`. No branch may be named `main/<something>`.
+
+### Scope
+
+- GUI and design changes, and changes touching many references, are discussed before they are applied.
+- The backend is a separate repository and is never changed from a task in this one. Where the integration needs a field the backend does not report, the integration reads it ahead and the owner builds the backend side.
 
 ## Releasing
 
 `.github/workflows/release.yml` publishes on a `vX.Y.Z` tag and refuses one whose version does not equal `manifest.json` `version`, so bump the manifest in the same change that will be tagged. A suffix such as `1.0.2-rc.1` is published as a pre-release. The release is titled `Version X.Y.Z`, which is how every release of this repository is named, and a pre-release carries `(DEV)` behind it. No archive is attached: HACS installs this repository by copying `custom_components/bambu_ams_monitoring` out of the tag, and an asset it never reads only suggests otherwise.
 
-Label every pull request before it is merged. The generated notes are grouped by `.github/release.yml`, which sorts `enhancement` into New Features, `bug` into Fixes and `documentation` into Documentation. An unlabelled pull request is not lost, it lands under Other Changes, which is where the whole of Version 1.0.2 ended up. A label added after the merge changes nothing about notes that are already written.
+Label every pull request when it is opened, and in any case before it is merged: `enhancement`, `bug`, `deprecation`, `documentation` or `maintenance` (refactor, build, CI, dependencies, version bump), with `ignore-for-release` to leave one out entirely. A pull request that does two things takes both labels and is listed once, under whichever section comes first. `breaking` goes on top of one of those whenever an existing installation can stop working the way it did, a caller that suddenly needs credentials for example. The generated notes are grouped by `.github/release.yml` in the same order as the backend's: Breaking Changes, New Features, Fixes, Deprecations, Documentation, Maintenance. An unlabelled pull request is not lost, it lands under Other Changes, which is where the whole of Version 1.0.2 ended up. A label added after the merge changes nothing about notes that are already written.
 
 `.github/workflows/validate.yml` runs hassfest and the HACS action on every pull request, on `main`, and weekly, because HACS validates against requirements that move on their own.
 
