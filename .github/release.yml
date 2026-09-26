@@ -7,6 +7,13 @@ changelog:
       - ignore-for-release
 
   categories:
+    # First, because a breaking change is nearly always a feature or a fix as
+    # well and carries both labels. Listed under New Features it would read like
+    # something to look forward to.
+    - title: Breaking Changes
+      labels:
+        - breaking
+
     - title: New Features
       labels:
         - enhancement
@@ -15,9 +22,17 @@ changelog:
       labels:
         - bug
 
+    - title: Deprecations
+      labels:
+        - deprecation
+
     - title: Documentation
       labels:
         - documentation
+
+    - title: Maintenance
+      labels:
+        - maintenance
 
     # Everything without one of the labels above, so an unlabelled pull request
     # is still listed rather than silently missing from the release notes.
