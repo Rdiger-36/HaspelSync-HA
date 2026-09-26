@@ -32,7 +32,7 @@ Eight endpoints, backend default port 4000. Every one of them needs an API key f
 | Call | Answer |
 |------|--------|
 | `GET /api/printers` | `[{"id": "...", "name": "..."}]` |
-| `GET /api/status/<id>` | `monitoringEnabled`, `mqttStatus`, `spoolmanStatus`, `lastMqttUpdate`, `lastMqttAmsUpdate`, `gcodeState`, `amsEnv`, `VERSION`, `MODE`, `LEGACY_MODE`, `SPOOLMAN_URL`, plus 404 when the ID is unknown |
+| `GET /api/status/<id>` | `monitoringEnabled`, `mqttStatus`, `spoolmanStatus`, `lastMqttUpdate`, `lastMqttAmsUpdate`, `gcodeState`, `amsEnv`, `VERSION`, `MODE`, `LEGACY_MODE`, `SPOOLMAN_URL`, `activeSlot`, plus 404 when the ID is unknown |
 | `GET /api/spools/<id>` | One entry per AMS slot: `amsId`, `slotState`, `slot`, `existingSpool`, `connectedViaTag`, `connectedViaMapping`, `archived`, `option`, `error`, `correctedRemain`, `amsWeight`, `filamentName`, `material`, `vendor`, `spoolmanId` |
 | `GET /api/print/<id>` | `gcodeState`, `jobName`, `layerNum`, `totalLayers`, `consumption`, `consumptionBooked`, `storagePresent`, `sliceFetch`, and while a print is active `stage`, `preparing`, `remainingMinutes`, `startedAt`, `estimatedEndAt`, the two times in epoch milliseconds. May fetch the sliced file over FTPS, so it is the slow one |
 | `POST /api/printer/<id>/monitoring/start` | `{"ok": true}`, or `{"ok": false, "message": "..."}` when it was already on |
@@ -43,6 +43,8 @@ Eight endpoints, backend default port 4000. Every one of them needs an API key f
 A refused call is answered with HTTP 401 and a body carrying `apiKeyRequired` when no Web UI password is set, `authRequired` when one is. Neither field is read here: the status code alone decides, because both mean the same thing for a caller that has no browser.
 
 HTTP 403 means the backend refused the host name of the base URL. From 1.3.0 on it answers only to an IP address, `localhost`, a `.local` name and the names listed under Allowed host names on its settings page. It sends the same status for a cross site write, which a caller without an `Origin` header never triggers, so here 403 always means the host name. The flows show `host_not_allowed` for it and the coordinator logs the setting that fixes it.
+
+`slot` carries the tray fields the backend picks in `pickSlot()`, `src/uispool.js`. `tag_uid`, `tray_diameter`, `nozzle_temp_min`, `nozzle_temp_max`, `bed_temp`, `drying_temp`, `drying_time` and `k` arrive as numbers or null, and only from a backend that has them; an older one leaves them out, which reads as None here. `activeSlot` on the status is null while no filament is loaded and absent on such a backend.
 
 `slot.tray_weight` is passed through as the printer sends it, a string such as `"1000"`, and an empty slot carries the number 0. `_grams()` in `sensor.py` reads it. `amsWeight` is the weight the backend derives from the RFID reading, null while there is none.
 
@@ -56,7 +58,7 @@ The backend upper cases every printer serial it stores, and it resolves `<id>` b
 
 - A printer ID is used exactly as `GET /api/printers` reports it. Never rewrite, suffix or case fold one before sending it. An invented ID answers 404 forever and its switch stays permanently unavailable, which is the bug the duplicate handling in the config flow used to cause.
 - Entity unique IDs are scoped to the config entry: `{entry_id}_ams_monitoring_{printer_id}`. The same printer may be configured in several instances, and Home Assistant drops the second entity of a duplicate unique ID.
-- The device identifier stays `(DOMAIN, printer_id)`, so all instances holding one printer attach to a single device.
+- The device identifier stays `(DOMAIN, printer_id)`, so all instances holding one printer attach to a single device. An AMS unit is a device of its own, `(DOMAIN, f"{printer_id}_ams_{unit}")` with the printer as `via_device`, built by `ams_device_info()` in `entity.py`. Its readings and the slots of the unit attach to it, the external holders stay on the printer.
 - Nothing aborts on a duplicate: neither a base URL that is already configured nor a printer that another entry already holds.
 - Changing a unique ID scheme or an ID stored in an entry requires a migration in `__init__.py`. Without one, existing installations lose their entity ID and their history.
 - A 401 is not a connection problem and is never retried into one. Everything that talks to the backend turns it into `ConfigEntryAuthFailed`, which is what puts the reauth step in front of the user. An entry set up before the backend asked for a key holds none, so this is also the upgrade path of every existing installation.
@@ -80,7 +82,7 @@ Adding a platform, for example a number:
 
 Adding an entity that exists per slot or per AMS unit: register it in the `async_track_members` call of its platform, so it appears with a unit that is plugged in later.
 
-Adding a value to an entity: give every new entity a `translation_key` and add its name to both translation files under `entity`. A slot or unit name uses the `{slot}` or `{ams}` placeholder, which the entity bases fill in.
+Adding a value to an entity: give every new entity a `translation_key` and add its name to both translation files under `entity`. A slot name uses the `{slot}` placeholder, which the entity base fills in, because four slots share one AMS device. A unit entity needs none: its device already names the unit.
 
 Adding a flow step: add the step ID and every data key to both `translations/en.json` and `translations/de.json`. A missing key shows up as a raw key in the UI.
 

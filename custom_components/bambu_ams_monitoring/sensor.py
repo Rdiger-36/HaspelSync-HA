@@ -55,6 +55,65 @@ def _epoch(value):
     return dt_util.utc_from_timestamp(value / 1000)
 
 
+def _consumption(entries):
+    """The per filament figures of /api/print, as a list a template can walk.
+
+    The backend keys them by the position of the filament in the slicer's list.
+    Only what a person looks at is kept: the slot, the grams and the material.
+    """
+    return [
+        {
+            "slot": entry.get("matchedAmsId") or entry.get("amsId"),
+            "grams": entry.get("grams"),
+            "type": entry.get("type"),
+            "color": _hex_color(entry.get("color")),
+        }
+        for entry in sorted(
+            (e for e in (entries or {}).values() if isinstance(e, dict)),
+            key=lambda e: e.get("index") or 0,
+        )
+    ]
+
+
+def _active_slot_attributes(coordinator: AmsPrinterCoordinator) -> dict:
+    """What sits in the slot that feeds the printing nozzle."""
+    slot = coordinator.slots.get(coordinator.status.get("activeSlot")) or {}
+    slot_data = slot.get("slot") or {}
+    return {
+        "filament_name": slot.get("filamentName"),
+        "material": slot.get("material"),
+        "color": _hex_color(slot_data.get("tray_color")),
+        "spool_id": slot.get("spoolmanId"),
+    }
+
+
+def _last_print_attributes(coordinator: AmsPrinterCoordinator) -> dict:
+    """The closing report of the last print: what was booked where."""
+    summary = coordinator.print_job.get("lastPrintSummary") or {}
+    duration = summary.get("durationMs")
+    return {
+        "job_name": summary.get("jobName"),
+        "started": _epoch(summary.get("startedAt")),
+        "ended": _epoch(summary.get("endedAt")),
+        "duration_minutes": round(duration / 60000) if duration else None,
+        "layer": summary.get("layerNum"),
+        "total_layers": summary.get("totalLayers"),
+        "error": summary.get("printError"),
+        "note": summary.get("note"),
+        "bookings": [
+            {
+                "slot": row.get("amsId"),
+                "grams": row.get("grams"),
+                "status": row.get("status"),
+                "spool_id": row.get("spoolId"),
+                "note": row.get("note"),
+            }
+            for row in summary.get("rows") or []
+        ],
+        "result_clears_at": _epoch(coordinator.print_job.get("printResetAt")),
+    }
+
+
 PRINTER_SENSORS: tuple[AmsPrinterSensorDescription, ...] = (
     AmsPrinterSensorDescription(
         key="print_state",
@@ -66,6 +125,8 @@ PRINTER_SENSORS: tuple[AmsPrinterSensorDescription, ...] = (
             "layer": c.print_job.get("layerNum"),
             "total_layers": c.print_job.get("totalLayers"),
             "consumption_booked": c.print_job.get("consumptionBooked"),
+            "consumption_needed": _consumption(c.print_job.get("fullConsumption")),
+            "consumption_so_far": _consumption(c.print_job.get("consumption")),
         },
     ),
     # The next four are filled by the backend only while a print is active and
@@ -106,6 +167,20 @@ PRINTER_SENSORS: tuple[AmsPrinterSensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         value=_progress,
+    ),
+    AmsPrinterSensorDescription(
+        key="active_slot",
+        translation_key="active_slot",
+        icon="mdi:printer-3d-nozzle-outline",
+        value=lambda c: c.status.get("activeSlot"),
+        attributes=lambda c: _active_slot_attributes(c),
+    ),
+    AmsPrinterSensorDescription(
+        key="last_print",
+        translation_key="last_print",
+        icon="mdi:history",
+        value=lambda c: (c.print_job.get("lastPrintSummary") or {}).get("state"),
+        attributes=lambda c: _last_print_attributes(c),
     ),
     AmsPrinterSensorDescription(
         key="last_ams_update",
@@ -297,6 +372,22 @@ def _grams(value):
     return grams if grams > 0 else None
 
 
+def _hex_color(value):
+    """A colour as #RRGGBB, the form a Home Assistant card takes.
+
+    The AMS appends an alpha byte, RRGGBBAA, and Spoolman sends six digits
+    without the hash. Anything that is not a colour becomes None.
+    """
+    value = (value or "").strip().lstrip("#")
+    if len(value) not in (6, 8):
+        return None
+    try:
+        int(value, 16)
+    except ValueError:
+        return None
+    return f"#{value[:6].upper()}"
+
+
 def _remaining(slot: dict, legacy_mode: bool):
     """Resolves what is left on the spool in a slot.
 
@@ -374,22 +465,53 @@ class AmsSlotSensor(AmsSlotEntity, SensorEntity):
         slot_data = slot.get("slot") or {}
         weight, percentage, total = _remaining(slot, bool(self.coordinator.status.get("LEGACY_MODE")))
 
+        spool = slot.get("existingSpool") or {}
+        filament = spool.get("filament") or {}
+
+        # The names ha-bambulab gives the same values where it has them, so a
+        # card written for one reads the other. What the tag and the printer's
+        # filament table say comes first, what Spoolman holds for the spool
+        # after it under a spoolman_ prefix.
         return {
             "ams_slot": self._ams_id,
+            "active": self.coordinator.status.get("activeSlot") == self._ams_id,
+            "empty": slot.get("slotState") == "Empty",
             "slot_state": slot.get("slotState"),
+            "name": slot.get("filamentName"),
+            "filament_name": slot.get("filamentName"),
             "material": slot.get("material"),
             "vendor": slot.get("vendor"),
-            "filament_name": slot.get("filamentName"),
-            "color": slot_data.get("tray_color"),
-            "colors": slot_data.get("cols"),
+            "type": slot_data.get("tray_type"),
             "tray_type": slot_data.get("tray_type"),
+            "sub_brand": slot_data.get("tray_sub_brands"),
+            "filament_id": slot_data.get("tray_info_idx"),
+            "preset_name": slot_data.get("preset_name"),
+            "preset_vendor": slot_data.get("preset_vendor"),
+            "color": _hex_color(slot_data.get("tray_color")),
+            "colors": [c for c in map(_hex_color, slot_data.get("cols") or []) if c],
+            "remain": slot_data.get("remain"),
+            "tray_weight": _grams(slot_data.get("tray_weight")),
+            "tray_diameter": slot_data.get("tray_diameter"),
+            "nozzle_temp_min": slot_data.get("nozzle_temp_min"),
+            "nozzle_temp_max": slot_data.get("nozzle_temp_max"),
+            "bed_temp": slot_data.get("bed_temp"),
+            "dry_temp": slot_data.get("drying_temp"),
+            "dry_time": slot_data.get("drying_time"),
+            "k_value": slot_data.get("k"),
+            "tag_uid": slot_data.get("tag_uid"),
             "tray_uuid": slot_data.get("tray_uuid"),
             "remaining_weight": weight,
             "remaining_percentage": percentage,
             "total_weight": total,
             "spool_id": slot.get("spoolmanId"),
+            "spoolman_filament_id": filament.get("id"),
+            "spoolman_filament_weight": filament.get("weight"),
+            "spoolman_initial_weight": spool.get("initial_weight"),
+            "spoolman_color": _hex_color(filament.get("color_hex")),
+            "spoolman_colors": [c for c in map(_hex_color, (filament.get("multi_color_hexes") or "").split(",")) if c],
             "connected_via_tag": slot.get("connectedViaTag"),
             "connected_via_mapping": slot.get("connectedViaMapping"),
+            "assigned_automatically": slot.get("assignedAutomatically"),
             "archived": slot.get("archived"),
             "action": slot.get("option"),
             "error": slot.get("error"),

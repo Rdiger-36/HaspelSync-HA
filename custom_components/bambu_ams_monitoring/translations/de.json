@@ -68,16 +68,16 @@
         "name": "Backend Version"
       },
       "ams_humidity": {
-        "name": "AMS {ams} Luftfeuchtigkeit"
+        "name": "Luftfeuchtigkeit"
       },
       "ams_humidity_level": {
-        "name": "AMS {ams} Feuchtigkeitsstufe"
+        "name": "Feuchtigkeitsstufe"
       },
       "ams_temperature": {
-        "name": "AMS {ams} Temperatur"
+        "name": "Temperatur"
       },
       "ams_drying_remaining": {
-        "name": "AMS {ams} Restzeit Trocknung"
+        "name": "Restzeit Trocknung"
       },
       "slot": {
         "name": "Slot {slot}"
@@ -99,6 +99,12 @@
       },
       "print_end": {
         "name": "Druckende"
+      },
+      "active_slot": {
+        "name": "Aktiver Slot"
+      },
+      "last_print": {
+        "name": "Letzter Druck"
       }
     },
     "binary_sensor": {
@@ -112,7 +118,7 @@
         "name": "Handlung erforderlich"
       },
       "ams_drying": {
-        "name": "AMS {ams} trocknet"
+        "name": "Trocknet"
       },
       "slot_problem": {
         "name": "Slot {slot} Problem"

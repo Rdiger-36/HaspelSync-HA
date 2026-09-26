@@ -87,14 +87,16 @@ The key field of that dialog starts empty and the stored key is never shown. Lea
 
 ## Entities
 
-Every printer becomes one device. All of its entities are polled together every 30 seconds, which is the pace the backend itself works at.
+Every printer becomes one device, and every AMS unit a device of its own below it, the way ha-bambulab shows them. The slots of a unit sit on the unit, the external spool holders on the printer. All entities of a printer are polled together every 30 seconds, which is the pace the backend itself works at.
 
 Per printer:
 
 | Entity | Description |
 |---|---|
 | `switch.ams_monitoring_<printer_name>` | Enables or disables filament monitoring for this printer |
-| `sensor.<printer>_print_state` | The G-code state, with job name, layer and total layers as attributes |
+| `sensor.<printer>_print_state` | The G-code state, with job name, layers and the grams per filament the print needs and has used so far as attributes |
+| `sensor.<printer>_active_slot` | The slot feeding the printing nozzle, with its filament as attributes. Needs a backend that reports it |
+| `sensor.<printer>_last_print` | How the last print ended, with its duration, error and what was booked on which spool as attributes |
 | `sensor.<printer>_print_progress` | The print progress in percent, derived from the layer count |
 | `sensor.<printer>_print_stage` | What the printer is doing, for example heating the bed, while a print is active |
 | `sensor.<printer>_print_time_remaining` | Minutes the printer still expects to need |
@@ -111,7 +113,7 @@ Per printer:
 | `button.<printer>_clear_print_result` | Clears a finished print at once instead of after its countdown, refused while a print is active |
 | `button.<printer>_reconnect_printers` | Rebuilds the MQTT connections of every printer of the backend without a restart |
 
-Per AMS unit, for example A:
+Per AMS unit, for example A, on the device of that unit:
 
 | Entity | Description |
 |---|---|
@@ -123,16 +125,27 @@ Per AMS unit, for example A:
 
 The last two exist only on a unit with a dryer, an AMS 2 Pro or an AMS HT. An AMS Lite reports no readings at all, so it has none of these entities while its slots are still there.
 
-Per AMS slot, for example A1, and for the external spool holder:
+Per AMS slot, for example A1 on the device of unit A, and for the external spool holder on the printer:
 
 | Entity | Description |
 |---|---|
-| `sensor.<printer>_slot_a1` | The filament in the slot, with material, vendor, colour, weights, spool ID and slot state as attributes |
-| `sensor.<printer>_slot_a1_remaining_weight` | Grams left, from Spoolman where the slot is linked |
-| `sensor.<printer>_slot_a1_remaining` | The same figure in percent |
-| `binary_sensor.<printer>_slot_a1_problem` | On when the backend reports an error for the slot or the spool is archived |
-| `binary_sensor.<printer>_slot_a1_action_required` | On when a spool has to be created, merged or assigned in the backend Web UI |
-| `binary_sensor.<printer>_slot_a1_linked_to_spoolman` | Whether the slot is linked by RFID tag or by a manual assignment, diagnostic |
+| `sensor.<printer>_ams_a_slot_a1` | The filament in the slot, with everything known about it as attributes, see below |
+| `sensor.<printer>_ams_a_slot_a1_remaining_weight` | Grams left, from Spoolman where the slot is linked |
+| `sensor.<printer>_ams_a_slot_a1_remaining` | The same figure in percent |
+| `binary_sensor.<printer>_ams_a_slot_a1_problem` | On when the backend reports an error for the slot or the spool is archived |
+| `binary_sensor.<printer>_ams_a_slot_a1_action_required` | On when a spool has to be created, merged or assigned in the backend Web UI |
+| `binary_sensor.<printer>_ams_a_slot_a1_linked_to_spoolman` | Whether the slot is linked by RFID tag or by a manual assignment, diagnostic |
+
+The slot sensor carries the attributes ha-bambulab gives a tray under the same names where both have the value, so a card written for one reads the other:
+
+| Attributes | Source |
+|---|---|
+| `active`, `empty`, `name`, `type`, `color`, `colors`, `filament_id`, `remain`, `tray_weight`, `tray_uuid` | What the AMS reports for the slot. Colours as `#RRGGBB` |
+| `tag_uid`, `tray_diameter`, `nozzle_temp_min`, `nozzle_temp_max`, `bed_temp`, `dry_temp`, `dry_time`, `k_value` | The RFID tag and the printer's filament table. Empty on a backend that does not hand them out yet |
+| `preset_name`, `preset_vendor`, `sub_brand` | The filament profile, learned by the backend from a sliced file |
+| `remaining_weight`, `remaining_percentage`, `total_weight` | The figure the backend dashboard shows |
+| `spool_id`, `spoolman_filament_id`, `spoolman_initial_weight`, `spoolman_filament_weight`, `spoolman_color`, `spoolman_colors` | The linked Spoolman spool |
+| `connected_via_tag`, `connected_via_mapping`, `assigned_automatically`, `archived`, `action`, `error` | How the slot is linked and what the backend wants done with it |
 
 Slots and AMS units appear as soon as the backend reports them, so a unit plugged in later brings its entities with it without a reload.
 
