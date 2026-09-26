@@ -75,6 +75,18 @@ def _consumption(entries):
     ]
 
 
+def _active_slot_attributes(coordinator: AmsPrinterCoordinator) -> dict:
+    """What sits in the slot that feeds the printing nozzle."""
+    slot = coordinator.slots.get(coordinator.status.get("activeSlot")) or {}
+    slot_data = slot.get("slot") or {}
+    return {
+        "filament_name": slot.get("filamentName"),
+        "material": slot.get("material"),
+        "color": _hex_color(slot_data.get("tray_color")),
+        "spool_id": slot.get("spoolmanId"),
+    }
+
+
 def _last_print_attributes(coordinator: AmsPrinterCoordinator) -> dict:
     """The closing report of the last print: what was booked where."""
     summary = coordinator.print_job.get("lastPrintSummary") or {}
@@ -155,6 +167,13 @@ PRINTER_SENSORS: tuple[AmsPrinterSensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         value=_progress,
+    ),
+    AmsPrinterSensorDescription(
+        key="active_slot",
+        translation_key="active_slot",
+        icon="mdi:printer-3d-nozzle-outline",
+        value=lambda c: c.status.get("activeSlot"),
+        attributes=lambda c: _active_slot_attributes(c),
     ),
     AmsPrinterSensorDescription(
         key="last_print",
@@ -450,11 +469,12 @@ class AmsSlotSensor(AmsSlotEntity, SensorEntity):
         filament = spool.get("filament") or {}
 
         # The names ha-bambulab gives the same values where it has them, so a
-        # card written for one reads the other. What the AMS reports comes
-        # first, what Spoolman holds for the spool after it under a spoolman_
-        # prefix.
+        # card written for one reads the other. What the tag and the printer's
+        # filament table say comes first, what Spoolman holds for the spool
+        # after it under a spoolman_ prefix.
         return {
             "ams_slot": self._ams_id,
+            "active": self.coordinator.status.get("activeSlot") == self._ams_id,
             "empty": slot.get("slotState") == "Empty",
             "slot_state": slot.get("slotState"),
             "name": slot.get("filamentName"),
@@ -471,6 +491,14 @@ class AmsSlotSensor(AmsSlotEntity, SensorEntity):
             "colors": [c for c in map(_hex_color, slot_data.get("cols") or []) if c],
             "remain": slot_data.get("remain"),
             "tray_weight": _grams(slot_data.get("tray_weight")),
+            "tray_diameter": slot_data.get("tray_diameter"),
+            "nozzle_temp_min": slot_data.get("nozzle_temp_min"),
+            "nozzle_temp_max": slot_data.get("nozzle_temp_max"),
+            "bed_temp": slot_data.get("bed_temp"),
+            "dry_temp": slot_data.get("drying_temp"),
+            "dry_time": slot_data.get("drying_time"),
+            "k_value": slot_data.get("k"),
+            "tag_uid": slot_data.get("tag_uid"),
             "tray_uuid": slot_data.get("tray_uuid"),
             "remaining_weight": weight,
             "remaining_percentage": percentage,

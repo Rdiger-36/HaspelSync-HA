@@ -95,6 +95,7 @@ Per printer:
 |---|---|
 | `switch.ams_monitoring_<printer_name>` | Enables or disables filament monitoring for this printer |
 | `sensor.<printer>_print_state` | The G-code state, with job name, layers and the grams per filament the print needs and has used so far as attributes |
+| `sensor.<printer>_active_slot` | The slot feeding the printing nozzle, with its filament as attributes. Needs a backend that reports it |
 | `sensor.<printer>_last_print` | How the last print ended, with its duration, error and what was booked on which spool as attributes |
 | `sensor.<printer>_print_progress` | The print progress in percent, derived from the layer count |
 | `sensor.<printer>_print_stage` | What the printer is doing, for example heating the bed, while a print is active |
@@ -139,7 +140,8 @@ The slot sensor carries the attributes ha-bambulab gives a tray under the same n
 
 | Attributes | Source |
 |---|---|
-| `empty`, `name`, `type`, `color`, `colors`, `filament_id`, `remain`, `tray_weight`, `tray_uuid` | What the AMS reports for the slot. Colours as `#RRGGBB` |
+| `active`, `empty`, `name`, `type`, `color`, `colors`, `filament_id`, `remain`, `tray_weight`, `tray_uuid` | What the AMS reports for the slot. Colours as `#RRGGBB` |
+| `tag_uid`, `tray_diameter`, `nozzle_temp_min`, `nozzle_temp_max`, `bed_temp`, `dry_temp`, `dry_time`, `k_value` | The RFID tag and the printer's filament table. Empty on a backend that does not hand them out yet |
 | `preset_name`, `preset_vendor`, `sub_brand` | The filament profile, learned by the backend from a sliced file |
 | `remaining_weight`, `remaining_percentage`, `total_weight` | The figure the backend dashboard shows |
 | `spool_id`, `spoolman_filament_id`, `spoolman_initial_weight`, `spoolman_filament_weight`, `spoolman_color`, `spoolman_colors` | The linked Spoolman spool |
