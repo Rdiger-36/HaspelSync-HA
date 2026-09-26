@@ -33,7 +33,9 @@
 * Toggle monitoring per printer directly from Home Assistant
 * One sensor per AMS slot: filament, material, vendor, colour, remaining weight and the Spoolman link
 * Humidity, temperature and drying state per AMS unit
-* Print state and progress, plus connection sensors for the printer and for Spoolman
+* Print state, stage, progress, remaining time and expected end, plus connection sensors for the printer and for Spoolman
+* A warning when the printer has no USB stick or SD card, or the sliced file cannot be read, since nothing is booked then
+* Buttons to clear a finished print and to reconnect the printers
 * Auto-detects all available printers from your backend
 * Availability tracking: the entities show as unavailable if the backend is unreachable
 * Multi-printer support: add multiple printers in one integration instance, and the same printer in several instances
@@ -94,12 +96,20 @@ Per printer:
 | `switch.ams_monitoring_<printer_name>` | Enables or disables filament monitoring for this printer |
 | `sensor.<printer>_print_state` | The G-code state, with job name, layer and total layers as attributes |
 | `sensor.<printer>_print_progress` | The print progress in percent, derived from the layer count |
+| `sensor.<printer>_print_stage` | What the printer is doing, for example heating the bed, while a print is active |
+| `sensor.<printer>_print_time_remaining` | Minutes the printer still expects to need |
+| `sensor.<printer>_print_start` | When the backend first saw the print running |
+| `sensor.<printer>_print_end` | The expected end, empty while paused |
 | `sensor.<printer>_last_ams_update` | When the backend last processed AMS data of this printer |
 | `sensor.<printer>_last_printer_message` | When the last MQTT message arrived, diagnostic |
 | `sensor.<printer>_backend_version` | The backend version, with mode and Spoolman URL as attributes, diagnostic |
 | `binary_sensor.<printer>_printer_connection` | Whether the backend holds the MQTT connection, with the exact state as an attribute |
 | `binary_sensor.<printer>_spoolman_connection` | Whether the backend reaches Spoolman, diagnostic |
 | `binary_sensor.<printer>_needs_attention` | On when any slot reports an error or waits for an action, with the slot list as attributes |
+| `binary_sensor.<printer>_usb_stick_or_sd_card_missing` | On when the printer reports no storage. The sliced file is read from it, so nothing is booked without it |
+| `binary_sensor.<printer>_sliced_file_missing` | On when the backend could not read the sliced file of the running job, with the reason as an attribute |
+| `button.<printer>_clear_print_result` | Clears a finished print at once instead of after its countdown, refused while a print is active |
+| `button.<printer>_reconnect_printers` | Rebuilds the MQTT connections of every printer of the backend without a restart |
 
 Per AMS unit, for example A:
 

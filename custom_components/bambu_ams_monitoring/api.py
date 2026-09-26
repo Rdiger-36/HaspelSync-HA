@@ -4,7 +4,8 @@ The coordinator owns the polling of a single printer. The printer list is read
 somewhere else entirely: in both flows, which have no coordinator yet, and in
 the ID repair at setup. That call carries the same API key and has to tell a
 rejected key from an unreachable backend in all three places, so it lives here
-once rather than three times.
+once rather than three times. The actions the switch and the buttons send share
+one call here for the same reason.
 """
 
 import aiohttp
@@ -73,3 +74,30 @@ async def async_fetch_printers(session, base_url: str, api_key: str | None):
         raise BackendUnreachable(f"{url} answered something that is not a printer list")
 
     return printers
+
+
+async def async_post_action(session, base_url: str, api_key: str | None, path: str):
+    """Sends one of the backend actions and reads its answer.
+
+    Every action endpoint answers a JSON body carrying `ok`, and some answer
+    HTTP 200 with `ok: false` when there was nothing to do, so the caller gets
+    both the status and the body to decide on. Nothing is raised for a status:
+    a refused key is left to the next coordinator refresh, which turns it into
+    the reauth flow for everybody rather than an error for whoever pressed.
+
+    Raises BackendUnreachable when no answer arrived at all.
+
+    @returns the HTTP status and the body, an empty dict when it was not JSON
+    """
+    url = f"{base_url.rstrip('/')}{path}"
+
+    try:
+        timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+        async with session.post(url, headers=auth_headers(api_key), timeout=timeout) as resp:
+            try:
+                body = await resp.json(content_type=None)
+            except ValueError:
+                body = None
+            return resp.status, body if isinstance(body, dict) else {}
+    except (aiohttp.ClientError, TimeoutError) as err:
+        raise BackendUnreachable(f"{url} could not be reached: {err}") from err

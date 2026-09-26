@@ -48,6 +48,13 @@ def _timestamp(value):
     return dt_util.as_utc(parsed) if parsed else None
 
 
+def _epoch(value):
+    """Reads a backend time in epoch milliseconds, the unit /api/print uses."""
+    if value is None:
+        return None
+    return dt_util.utc_from_timestamp(value / 1000)
+
+
 PRINTER_SENSORS: tuple[AmsPrinterSensorDescription, ...] = (
     AmsPrinterSensorDescription(
         key="print_state",
@@ -60,6 +67,37 @@ PRINTER_SENSORS: tuple[AmsPrinterSensorDescription, ...] = (
             "total_layers": c.print_job.get("totalLayers"),
             "consumption_booked": c.print_job.get("consumptionBooked"),
         },
+    ),
+    # The next four are filled by the backend only while a print is active and
+    # are None otherwise, because the printer keeps reporting the last values of
+    # a job that is already over.
+    AmsPrinterSensorDescription(
+        key="print_stage",
+        translation_key="print_stage",
+        icon="mdi:list-status",
+        value=lambda c: c.print_job.get("stage"),
+        attributes=lambda c: {"preparing": c.print_job.get("preparing")},
+    ),
+    AmsPrinterSensorDescription(
+        key="print_remaining_time",
+        translation_key="print_remaining_time",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        value=lambda c: c.print_job.get("remainingMinutes"),
+    ),
+    AmsPrinterSensorDescription(
+        key="print_start",
+        translation_key="print_start",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value=lambda c: _epoch(c.print_job.get("startedAt")),
+    ),
+    AmsPrinterSensorDescription(
+        key="print_end",
+        translation_key="print_end",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        # Empty while paused: the backend names no end that would slide forward
+        # for as long as the pause lasts.
+        value=lambda c: _epoch(c.print_job.get("estimatedEndAt")),
     ),
     AmsPrinterSensorDescription(
         key="print_progress",

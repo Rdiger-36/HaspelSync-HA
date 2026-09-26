@@ -87,6 +87,18 @@
       },
       "slot_remaining_percentage": {
         "name": "Slot {slot} remaining"
+      },
+      "print_stage": {
+        "name": "Print stage"
+      },
+      "print_remaining_time": {
+        "name": "Print time remaining"
+      },
+      "print_start": {
+        "name": "Print start"
+      },
+      "print_end": {
+        "name": "Print end"
       }
     },
     "binary_sensor": {
@@ -110,6 +122,20 @@
       },
       "slot_linked": {
         "name": "Slot {slot} linked to Spoolman"
+      },
+      "storage_missing": {
+        "name": "USB stick or SD card missing"
+      },
+      "slice_file_missing": {
+        "name": "Sliced file missing"
+      }
+    },
+    "button": {
+      "clear_print_result": {
+        "name": "Clear print result"
+      },
+      "reconnect": {
+        "name": "Reconnect printers"
       }
     }
   }

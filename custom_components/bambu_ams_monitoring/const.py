@@ -17,7 +17,7 @@ HTTP_HOST_REFUSED = 403
 
 # The switch was the only platform for a long time. It stays first in the list
 # so an existing installation keeps the order it already shows.
-PLATFORMS = ["switch", "sensor", "binary_sensor"]
+PLATFORMS = ["switch", "sensor", "binary_sensor", "button"]
 
 # Where the per printer coordinators live inside hass.data[DOMAIN][entry_id].
 DATA_COORDINATORS = "coordinators"

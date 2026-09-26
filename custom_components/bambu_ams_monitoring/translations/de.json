@@ -87,6 +87,18 @@
       },
       "slot_remaining_percentage": {
         "name": "Slot {slot} Restmenge"
+      },
+      "print_stage": {
+        "name": "Druckphase"
+      },
+      "print_remaining_time": {
+        "name": "Verbleibende Druckzeit"
+      },
+      "print_start": {
+        "name": "Druckbeginn"
+      },
+      "print_end": {
+        "name": "Druckende"
       }
     },
     "binary_sensor": {
@@ -110,6 +122,20 @@
       },
       "slot_linked": {
         "name": "Slot {slot} mit Spoolman verknüpft"
+      },
+      "storage_missing": {
+        "name": "USB-Stick oder SD-Karte fehlt"
+      },
+      "slice_file_missing": {
+        "name": "Slicer-Datei fehlt"
+      }
+    },
+    "button": {
+      "clear_print_result": {
+        "name": "Druckergebnis löschen"
+      },
+      "reconnect": {
+        "name": "Drucker neu verbinden"
       }
     }
   }

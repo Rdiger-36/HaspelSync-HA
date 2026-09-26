@@ -20,22 +20,25 @@ The whole integration is roughly 5k tokens in a single package, so it carries no
 | `custom_components/bambu_ams_monitoring/entity.py` | Entity bases for a printer, an AMS unit and a slot, plus the discovery helper |
 | `custom_components/bambu_ams_monitoring/switch.py` | One `SwitchEntity` per configured printer |
 | `custom_components/bambu_ams_monitoring/sensor.py` | Printer, AMS unit and slot sensors |
-| `custom_components/bambu_ams_monitoring/binary_sensor.py` | Connection, attention, drying and slot state binary sensors |
+| `custom_components/bambu_ams_monitoring/binary_sensor.py` | Connection, attention, storage, sliced file, drying and slot state binary sensors |
+| `custom_components/bambu_ams_monitoring/button.py` | Clear print result and reconnect buttons per printer |
 | `custom_components/bambu_ams_monitoring/const.py` | Domain, config keys, platform list and polling constants |
 | `custom_components/bambu_ams_monitoring/translations/` | English and German strings, keys must match the step and error IDs in both flows |
 
 ## Backend Contract
 
-Six endpoints, backend default port 4000. Every one of them needs an API key from backend 1.3.0 on: the backend answers `/api/` only to its own Web UI and to a caller carrying a key, whether or not a Web UI password is set. The key travels as `Authorization: Bearer <key>`, is created on the backend settings page under Network access and starts with `ams_`. A backend older than that ignores the header, which is why an entry without a key is not repaired into one until a request is actually refused.
+Eight endpoints, backend default port 4000. Every one of them needs an API key from backend 1.3.0 on: the backend answers `/api/` only to its own Web UI and to a caller carrying a key, whether or not a Web UI password is set. The key travels as `Authorization: Bearer <key>`, is created on the backend settings page under Network access and starts with `ams_`. A backend older than that ignores the header, which is why an entry without a key is not repaired into one until a request is actually refused.
 
 | Call | Answer |
 |------|--------|
 | `GET /api/printers` | `[{"id": "...", "name": "..."}]` |
 | `GET /api/status/<id>` | `monitoringEnabled`, `mqttStatus`, `spoolmanStatus`, `lastMqttUpdate`, `lastMqttAmsUpdate`, `gcodeState`, `amsEnv`, `VERSION`, `MODE`, `LEGACY_MODE`, `SPOOLMAN_URL`, plus 404 when the ID is unknown |
 | `GET /api/spools/<id>` | One entry per AMS slot: `amsId`, `slotState`, `slot`, `existingSpool`, `connectedViaTag`, `connectedViaMapping`, `archived`, `option`, `error`, `correctedRemain`, `amsWeight`, `filamentName`, `material`, `vendor`, `spoolmanId` |
-| `GET /api/print/<id>` | `gcodeState`, `jobName`, `layerNum`, `totalLayers`, `consumption`, `consumptionBooked`. May fetch the sliced file over FTPS, so it is the slow one |
+| `GET /api/print/<id>` | `gcodeState`, `jobName`, `layerNum`, `totalLayers`, `consumption`, `consumptionBooked`, `storagePresent`, `sliceFetch`, and while a print is active `stage`, `preparing`, `remainingMinutes`, `startedAt`, `estimatedEndAt`, the two times in epoch milliseconds. May fetch the sliced file over FTPS, so it is the slow one |
 | `POST /api/printer/<id>/monitoring/start` | `{"ok": true}`, or `{"ok": false, "message": "..."}` when it was already on |
 | `POST /api/printer/<id>/monitoring/stop` | Same shape |
+| `POST /api/print/<id>/clear` | `{"ok": true}`, or HTTP 409 with `{"ok": false, "error": "..."}` while a print is active |
+| `POST /api/printers/reconnect` | `{"ok": true, "reconnected": [...], "skipped": n}`, acts on every printer of the backend at once |
 
 A refused call is answered with HTTP 401 and a body carrying `apiKeyRequired` when no Web UI password is set, `authRequired` when one is. Neither field is read here: the status code alone decides, because both mean the same thing for a caller that has no browser.
 
@@ -73,7 +76,7 @@ Adding a platform, for example a number:
 1. Write the platform module next to `switch.py`.
 2. Add it to `PLATFORMS` in `const.py`, which both `async_forward_entry_setups` and `async_unload_platforms` read.
 3. Derive from `AmsEntity`, `AmsUnitEntity` or `AmsSlotEntity` in `entity.py`. They build the unique ID as `{entry_id}_{key}_{printer_id}`, attach the printer device and answer availability.
-4. Read from the coordinator rather than from the network. Nothing below `coordinator.py` opens an HTTP request of its own, apart from the switch, which posts an action.
+4. Read from the coordinator rather than from the network. Nothing below `coordinator.py` opens an HTTP request of its own, apart from the switch and the buttons, which post an action through `async_post_action()` in `api.py`.
 
 Adding an entity that exists per slot or per AMS unit: register it in the `async_track_members` call of its platform, so it appears with a unit that is plugged in later.
 
