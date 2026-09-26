@@ -95,7 +95,7 @@ Per printer:
 |---|---|
 | `switch.ams_monitoring_<printer_name>` | Enables or disables filament monitoring for this printer |
 | `sensor.<printer>_print_state` | The G-code state, with job name, layers and the grams per filament the print needs and has used so far as attributes |
-| `sensor.<printer>_active_slot` | The slot feeding the printing nozzle, with its filament as attributes. Needs a backend that reports it |
+| `sensor.<printer>_active_slot` | The slot feeding the printing nozzle, with its filament as attributes. Appears only once the backend reports the active slot, which no release does yet |
 | `sensor.<printer>_last_print` | How the last print ended, with its duration, error and what was booked on which spool as attributes |
 | `sensor.<printer>_print_progress` | The print progress in percent, derived from the layer count |
 | `sensor.<printer>_print_stage` | What the printer is doing, for example heating the bed, while a print is active |

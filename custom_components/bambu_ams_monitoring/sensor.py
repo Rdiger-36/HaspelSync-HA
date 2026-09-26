@@ -169,13 +169,6 @@ PRINTER_SENSORS: tuple[AmsPrinterSensorDescription, ...] = (
         value=_progress,
     ),
     AmsPrinterSensorDescription(
-        key="active_slot",
-        translation_key="active_slot",
-        icon="mdi:printer-3d-nozzle-outline",
-        value=lambda c: c.status.get("activeSlot"),
-        attributes=lambda c: _active_slot_attributes(c),
-    ),
-    AmsPrinterSensorDescription(
         key="last_print",
         translation_key="last_print",
         icon="mdi:history",
@@ -210,6 +203,17 @@ PRINTER_SENSORS: tuple[AmsPrinterSensorDescription, ...] = (
 )
 
 
+# Not among PRINTER_SENSORS: only a backend that reports activeSlot gets it,
+# see async_setup_entry().
+ACTIVE_SLOT_SENSOR = AmsPrinterSensorDescription(
+    key="active_slot",
+    translation_key="active_slot",
+    icon="mdi:printer-3d-nozzle-outline",
+    value=lambda c: c.status.get("activeSlot"),
+    attributes=lambda c: _active_slot_attributes(c),
+)
+
+
 async def async_setup_entry(hass, entry, async_add_entities):
     """Sets up the printer, AMS unit and slot sensors of this entry."""
     coordinators = hass.data[DOMAIN][entry.entry_id][DATA_COORDINATORS]
@@ -222,6 +226,18 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities(entities)
 
     for coordinator in coordinators.values():
+        # Created once the backend carries the field at all, rather than at
+        # setup: a backend that does not report it yet would leave a sensor
+        # that reads unknown forever, and one that is down at setup says
+        # nothing either way. Discovered like a unit, so an updated backend
+        # brings the sensor without a reload.
+        async_track_members(
+            entry,
+            coordinator,
+            async_add_entities,
+            lambda c=coordinator: {ACTIVE_SLOT_SENSOR.key} if "activeSlot" in c.status else set(),
+            lambda _key, c=coordinator: [AmsPrinterSensor(c, ACTIVE_SLOT_SENSOR)],
+        )
         async_track_members(
             entry,
             coordinator,
@@ -467,6 +483,7 @@ class AmsSlotSensor(AmsSlotEntity, SensorEntity):
 
         spool = slot.get("existingSpool") or {}
         filament = spool.get("filament") or {}
+        status = self.coordinator.status
 
         # The names ha-bambulab gives the same values where it has them, so a
         # card written for one reads the other. What the tag and the printer's
@@ -474,7 +491,9 @@ class AmsSlotSensor(AmsSlotEntity, SensorEntity):
         # after it under a spoolman_ prefix.
         return {
             "ams_slot": self._ams_id,
-            "active": self.coordinator.status.get("activeSlot") == self._ams_id,
+            # None rather than False on a backend that does not report it, so
+            # an automation cannot read "not active" where nothing is known.
+            "active": status["activeSlot"] == self._ams_id if "activeSlot" in status else None,
             "empty": slot.get("slotState") == "Empty",
             "slot_state": slot.get("slotState"),
             "name": slot.get("filamentName"),
