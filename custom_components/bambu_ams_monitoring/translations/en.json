@@ -144,5 +144,13 @@
         "name": "Reconnect printers"
       }
     }
+  },
+  "exceptions": {
+    "backend_unreachable": {
+      "message": "The backend could not be reached: {error}"
+    },
+    "action_refused": {
+      "message": "The backend refused the action: {message}"
+    }
   }
 }
