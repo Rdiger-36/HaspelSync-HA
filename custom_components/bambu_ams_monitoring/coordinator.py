@@ -9,7 +9,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import auth_headers
-from .const import DOMAIN, UPDATE_INTERVAL, REQUEST_TIMEOUT, EXTERNAL_SLOT
+from .const import DOMAIN, UPDATE_INTERVAL, REQUEST_TIMEOUT, EXTERNAL_SLOT, HTTP_HOST_REFUSED
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -76,6 +76,14 @@ class AmsPrinterCoordinator(DataUpdateCoordinator):
             async with self.session.get(url, headers=auth_headers(self.api_key), timeout=timeout) as resp:
                 if resp.status == 401:
                     raise ConfigEntryAuthFailed(f"{path} answered HTTP 401, the API key is not accepted")
+                if resp.status == HTTP_HOST_REFUSED:
+                    # Said in full because the log line is all a user sees of it,
+                    # and the fix is a setting on the backend rather than here.
+                    raise UpdateFailed(
+                        f"{path} answered HTTP 403: the backend does not allow the host name in "
+                        f"{self.base_url}. Add it under \"Allowed host names\" on its settings page, "
+                        "or configure the backend by its IP address"
+                    )
                 if resp.status != 200:
                     if required:
                         raise UpdateFailed(f"{path} answered HTTP {resp.status}")
@@ -113,13 +121,13 @@ class AmsPrinterCoordinator(DataUpdateCoordinator):
     def ams_units(self) -> dict:
         """Every AMS unit that reports environment readings, keyed by its letter.
 
-        The external spool holder is filtered out although it can appear as a
-        slot: it is not a unit and has neither humidity nor a dryer. An AMS Lite
+        The external spool holders are filtered out although they appear as
+        slots: they are not units and have neither humidity nor a dryer. An AMS Lite
         reports no readings at all and is therefore absent here as well, while
         its slots are present in `slots`.
         """
         return {
             unit["amsId"]: unit
             for unit in self.status.get("amsEnv") or []
-            if unit.get("amsId") and unit["amsId"] != EXTERNAL_SLOT
+            if unit.get("amsId") and not unit["amsId"].startswith(EXTERNAL_SLOT)
         }

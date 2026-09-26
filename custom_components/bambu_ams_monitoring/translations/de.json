@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Bambu AMS Monitoring – Einrichtung",
+        "title": "Bambu AMS Monitoring: Einrichtung",
         "description": "Gib die Basis-URL deines Bambu AMS Monitoring Backends und einen API-Key ein. Den Key legst du auf der Einstellungsseite des Backends unter „Netzwerkzugriff“ an.",
         "data": {
           "base_url": "Basis-URL",
@@ -26,7 +26,8 @@
     },
     "error": {
       "cannot_connect": "Verbindung zum Backend fehlgeschlagen. Bitte überprüfe die URL.",
-      "invalid_auth": "Das Backend hat diesen API-Key nicht akzeptiert. Lege auf seiner Einstellungsseite unter „Netzwerkzugriff“ einen an."
+      "invalid_auth": "Das Backend hat diesen API-Key nicht akzeptiert. Lege auf seiner Einstellungsseite unter „Netzwerkzugriff“ einen an.",
+      "host_not_allowed": "Das Backend lehnt den Hostnamen in dieser URL ab. Trage ihn auf seiner Einstellungsseite unter „Erlaubte Hostnamen“ ein oder gib das Backend mit seiner IP-Adresse an."
     },
     "abort": {
       "reauth_successful": "Der neue API-Key wird akzeptiert."
@@ -45,7 +46,8 @@
     },
     "error": {
       "cannot_connect": "Verbindung zum Backend fehlgeschlagen. Die aktuell eingerichteten Drucker bleiben auswählbar.",
-      "invalid_auth": "Das Backend hat diesen API-Key nicht akzeptiert, es wurde nichts gespeichert. Lege auf seiner Einstellungsseite unter „Netzwerkzugriff“ einen an."
+      "invalid_auth": "Das Backend hat diesen API-Key nicht akzeptiert, es wurde nichts gespeichert. Lege auf seiner Einstellungsseite unter „Netzwerkzugriff“ einen an.",
+      "host_not_allowed": "Das Backend lehnt den Hostnamen ab, unter dem es eingerichtet ist. Trage ihn auf seiner Einstellungsseite unter „Erlaubte Hostnamen“ ein. Die bisher eingerichteten Drucker bleiben auswählbar."
     }
   },
   "entity": {

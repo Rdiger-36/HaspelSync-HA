@@ -138,6 +138,9 @@ Make sure the backend is reachable at the URL you entered and responds at `/api/
 **Home Assistant asks to re-authenticate the integration**
 The backend answered with HTTP 401, which means it does not accept the API key any more: the key was revoked, or the backend was updated to 1.3.0 while this integration still held none. Create a key under **Network access** on the backend settings page and enter it in the dialog Home Assistant shows. Nothing else about the entry changes, and every entity keeps its history.
 
+**The backend refuses the host name**
+Backend 1.3.0 and newer answers only under its IP address, `localhost`, a `.local` name and the host names listed under **Allowed host names** on its settings page. Everything else is answered with HTTP 403, which the setup dialog reports as a refused host name and the log as a failed update. Add the name there, or enter the backend by its IP address.
+
 **Entities show as unavailable**
 Either the backend is not reachable, or it does not know the printer ID the entity was configured with. Check that the service is running and that the URL and port are correct:
 

@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Bambu AMS Monitoring – Setup",
+        "title": "Bambu AMS Monitoring: Setup",
         "description": "Enter the base URL of your Bambu AMS Monitoring backend and an API key. Create the key on the settings page of the backend, under \"Network access\".",
         "data": {
           "base_url": "Base URL",
@@ -26,7 +26,8 @@
     },
     "error": {
       "cannot_connect": "Could not connect to the backend. Please check the URL.",
-      "invalid_auth": "The backend did not accept this API key. Create one under \"Network access\" on its settings page."
+      "invalid_auth": "The backend did not accept this API key. Create one under \"Network access\" on its settings page.",
+      "host_not_allowed": "The backend refused the host name in this URL. Add it under \"Allowed host names\" on its settings page, or enter the backend by its IP address."
     },
     "abort": {
       "reauth_successful": "The new API key is accepted."
@@ -45,7 +46,8 @@
     },
     "error": {
       "cannot_connect": "Could not connect to the backend. The printers currently configured are still selectable.",
-      "invalid_auth": "The backend did not accept this API key, so nothing was saved. Create one under \"Network access\" on its settings page."
+      "invalid_auth": "The backend did not accept this API key, so nothing was saved. Create one under \"Network access\" on its settings page.",
+      "host_not_allowed": "The backend refused the host name it is configured under. Add it under \"Allowed host names\" on its settings page. The printers currently configured are still selectable."
     }
   },
   "entity": {

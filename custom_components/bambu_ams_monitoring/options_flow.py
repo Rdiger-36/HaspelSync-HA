@@ -4,12 +4,13 @@ from homeassistant import config_entries
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import BackendUnauthorized, BackendUnreachable, async_fetch_printers
+from .api import BackendHostRefused, BackendUnauthorized, BackendUnreachable, async_fetch_printers
 from .const import (
     CONF_BASE_URL,
     CONF_PRINTERS,
     CONF_API_KEY,
     CONF_ERR_CANNOT_CONNECT,
+    CONF_ERR_HOST_NOT_ALLOWED,
     CONF_ERR_INVALID_AUTH,
 )
 
@@ -53,6 +54,9 @@ class AmsManagerOptionsFlowHandler(config_entries.OptionsFlow):
         except BackendUnauthorized:
             errors["base"] = CONF_ERR_INVALID_AUTH
             key_rejected = True
+            self._printers_raw = []
+        except BackendHostRefused:
+            errors["base"] = CONF_ERR_HOST_NOT_ALLOWED
             self._printers_raw = []
         except BackendUnreachable:
             errors["base"] = CONF_ERR_CANNOT_CONNECT

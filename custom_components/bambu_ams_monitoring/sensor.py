@@ -169,6 +169,12 @@ class AmsHumiditySensor(AmsUnitEntity, SensorEntity):
     def native_value(self):
         return self.unit.get("humidityPercent")
 
+    @property
+    def extra_state_attributes(self):
+        # The model is what the printer reports for the unit, AMS 2 Pro, AMS HT
+        # and so on, and it explains why a unit has a dryer or none.
+        return {"model": self.unit.get("model")}
+
 
 class AmsHumidityLevelSensor(AmsUnitEntity, SensorEntity):
     """The humidity level 1 to 5 an AMS shows as its drop icons.
@@ -239,6 +245,20 @@ class AmsDryingRemainingSensor(AmsUnitEntity, SensorEntity):
         }
 
 
+def _grams(value):
+    """Reads a spool weight the AMS reports, or None when there is none.
+
+    The backend passes tray_weight through as the printer sends it, which is a
+    string such as "1000", and an empty slot as the number 0. JavaScript on the
+    dashboard coerces either, Python raises on the string.
+    """
+    try:
+        grams = float(value)
+    except (TypeError, ValueError):
+        return None
+    return grams if grams > 0 else None
+
+
 def _remaining(slot: dict, legacy_mode: bool):
     """Resolves what is left on the spool in a slot.
 
@@ -253,7 +273,7 @@ def _remaining(slot: dict, legacy_mode: bool):
     """
     slot_data = slot.get("slot") or {}
     remain = slot_data.get("remain")
-    tray_weight = slot_data.get("tray_weight")
+    tray_weight = _grams(slot_data.get("tray_weight"))
 
     # The AMS reports -1 while it has no reading, for the first seconds after a
     # spool goes in and for every spool without an RFID tag. The dashboard prints
@@ -262,7 +282,7 @@ def _remaining(slot: dict, legacy_mode: bool):
     if remain is not None and remain < 0:
         remain = None
 
-    weight = slot.get("correctedWeight")
+    weight = slot.get("amsWeight")
     if weight is None and remain is not None and tray_weight:
         weight = round(tray_weight / 100 * remain)
 
@@ -270,9 +290,11 @@ def _remaining(slot: dict, legacy_mode: bool):
     if percentage is None:
         percentage = remain
 
-    total = tray_weight
+    total = round(tray_weight) if tray_weight else None
     spool = slot.get("existingSpool") or {}
-    linked = slot.get("connectedViaTag") or slot.get("connectedViaMapping")
+    # An archived spool still sits in the slot and Spoolman still knows its
+    # weight, so the dashboard reads it off Spoolman like a linked one.
+    linked = slot.get("connectedViaTag") or slot.get("connectedViaMapping") or slot.get("archived")
 
     if not legacy_mode and linked and spool.get("remaining_weight") is not None:
         weight = round(spool["remaining_weight"])

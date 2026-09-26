@@ -11,8 +11,8 @@ from .entity import AmsEntity, AmsSlotEntity, AmsUnitEntity, async_track_members
 def _needs_work(slot: dict) -> bool:
     """Says whether the backend offers an action for this slot.
 
-    The backend sends the button label rather than a key, so the three labels
-    that mean there is nothing to do are what is compared against. A slot
+    The backend sends the button label rather than a key, so the labels that
+    mean there is nothing to do are what is compared against. A slot
     without a label at all has not been evaluated yet, which is not work either.
     """
     option = slot.get("option")

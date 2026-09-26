@@ -31,15 +31,21 @@ Six endpoints, backend default port 4000. Every one of them needs an API key fro
 | Call | Answer |
 |------|--------|
 | `GET /api/printers` | `[{"id": "...", "name": "..."}]` |
-| `GET /api/status/<id>` | `monitoringEnabled`, `mqttStatus`, `spoolmanStatus`, `lastMqttUpdate`, `lastMqttAmsUpdate`, `gcodeState`, `amsEnv`, `VERSION`, `MODE`, `LEGACY_MODE`, plus 404 when the ID is unknown |
-| `GET /api/spools/<id>` | One entry per AMS slot: `amsId`, `slotState`, `slot`, `existingSpool`, `connectedViaTag`, `connectedViaMapping`, `archived`, `option`, `error`, `correctedRemain`, `correctedWeight` |
+| `GET /api/status/<id>` | `monitoringEnabled`, `mqttStatus`, `spoolmanStatus`, `lastMqttUpdate`, `lastMqttAmsUpdate`, `gcodeState`, `amsEnv`, `VERSION`, `MODE`, `LEGACY_MODE`, `SPOOLMAN_URL`, plus 404 when the ID is unknown |
+| `GET /api/spools/<id>` | One entry per AMS slot: `amsId`, `slotState`, `slot`, `existingSpool`, `connectedViaTag`, `connectedViaMapping`, `archived`, `option`, `error`, `correctedRemain`, `amsWeight`, `filamentName`, `material`, `vendor`, `spoolmanId` |
 | `GET /api/print/<id>` | `gcodeState`, `jobName`, `layerNum`, `totalLayers`, `consumption`, `consumptionBooked`. May fetch the sliced file over FTPS, so it is the slow one |
 | `POST /api/printer/<id>/monitoring/start` | `{"ok": true}`, or `{"ok": false, "message": "..."}` when it was already on |
 | `POST /api/printer/<id>/monitoring/stop` | Same shape |
 
 A refused call is answered with HTTP 401 and a body carrying `apiKeyRequired` when no Web UI password is set, `authRequired` when one is. Neither field is read here: the status code alone decides, because both mean the same thing for a caller that has no browser.
 
-`amsId` is the slot label the backend builds, `A1` to `D4`, `HT-A` for an AMS HT and `External` for the spool holder. An `amsEnv` entry carries the unit letter alone. The backend defines both in `src/utils.js`, `convertAMSandSlot()`.
+HTTP 403 means the backend refused the host name of the base URL. From 1.3.0 on it answers only to an IP address, `localhost`, a `.local` name and the names listed under Allowed host names on its settings page. It sends the same status for a cross site write, which a caller without an `Origin` header never triggers, so here 403 always means the host name. The flows show `host_not_allowed` for it and the coordinator logs the setting that fixes it.
+
+`slot.tray_weight` is passed through as the printer sends it, a string such as `"1000"`, and an empty slot carries the number 0. `_grams()` in `sensor.py` reads it. `amsWeight` is the weight the backend derives from the RFID reading, null while there is none.
+
+The backend publishes the whole contract as OpenAPI at `GET /api/openapi.json`.
+
+`amsId` is the slot label the backend builds, `A1` to `D4`, `HT-A` for an AMS HT, `External` for the spool holder and `External-2` for the second holder of a dual nozzle printer. An `amsEnv` entry carries the unit letter alone, plus the `model` the printer reports for it. The backend defines both in `src/utils.js`, `convertAMSandSlot()`.
 
 The backend upper cases every printer serial it stores, and it resolves `<id>` by exact match against its own list.
 
@@ -55,7 +61,7 @@ The backend upper cases every printer serial it stores, and it resolves `<id>` b
 - The API key is optional in the stored entry data and read with `entry.data.get()`. An entry written before it existed carries no key, and a backend older than 1.3.0 needs none.
 - An unreachable backend must never shrink an entry. The options flow keeps configured printers selectable when the printer list cannot be fetched, and a backend that is down at setup leaves the entry loaded with unavailable entities rather than raising `ConfigEntryNotReady`.
 - `/api/status` decides whether a printer is reachable. The spool and print endpoints are allowed to fail on their own, so a slow sliced file cannot take the connection sensors down.
-- The remaining weight and percentage of a slot follow the same resolution the backend dashboard makes, see `_remaining()` in `sensor.py`. Both have to keep agreeing, otherwise the same spool reads differently in the two places. The single deviation is the AMS reading of -1, which means no reading and becomes an empty state here rather than a negative percentage.
+- The remaining weight and percentage of a slot follow the same resolution the backend dashboard makes, see `_remaining()` in `sensor.py`. Both have to keep agreeing, otherwise the same spool reads differently in the two places. A slot counts as linked there when it is linked by tag, by mapping or holds an archived spool. The single deviation is the AMS reading of -1, which means no reading and becomes an empty state here rather than a negative percentage.
 - Slots and AMS units are discovered on every coordinator update, not only at setup. The backend answers with an empty spool list until its first AMS update, so entities built once at setup would be missing on a fresh install.
 - The options flow relies on the `config_entry` property of its base class, which needs Home Assistant 2024.11. Assigning `self.config_entry` is removed in 2025.12. `hacs.json` pins that minimum.
 - `manifest.json` `version` and the git tag belong together. HACS reads the manifest.
