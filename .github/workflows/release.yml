@@ -49,7 +49,7 @@ jobs:
 
           # HACS installs the version the manifest reports, not the tag. If the
           # two disagree, the integration names a version nobody can find.
-          MANIFEST_VERSION="$(python3 -c "import json; print(json.load(open('custom_components/bambu_ams_monitoring/manifest.json'))['version'])")"
+          MANIFEST_VERSION="$(python3 -c "import json; print(json.load(open('custom_components/haspelsync/manifest.json'))['version'])")"
           if [[ "${VERSION}" != "${MANIFEST_VERSION}" ]]; then
             echo "::error::Tag version '${VERSION}' does not match manifest.json '${MANIFEST_VERSION}'."
             exit 1
@@ -87,7 +87,7 @@ jobs:
           fi
 
           # No archive is attached. HACS installs a standard custom repository
-          # by copying custom_components/bambu_ams_monitoring out of the tag,
+          # by copying custom_components/haspelsync out of the tag,
           # and an asset it never reads would only invite the assumption that
           # it does.
           LATEST="$([[ "${PRERELEASE}" == "true" ]] && echo false || echo true)"

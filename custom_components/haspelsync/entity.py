@@ -61,7 +61,7 @@ class AmsEntity(CoordinatorEntity):
             identifiers={(DOMAIN, coordinator.printer_id)},
             name=coordinator.printer_name,
             manufacturer="Rdiger-36",
-            model="Bambu AMS Monitoring",
+            model="HaspelSync",
         )
 
 

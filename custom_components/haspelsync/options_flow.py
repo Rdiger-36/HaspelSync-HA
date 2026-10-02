@@ -16,7 +16,7 @@ from .const import (
 
 
 class AmsManagerOptionsFlowHandler(config_entries.OptionsFlow):
-    """Handle options flow for Bambu AMS Monitoring.
+    """Handle options flow for HaspelSync.
 
     `self.config_entry` is provided by the base class. Assigning it here is
     deprecated since Home Assistant 2024.11 and removed in 2025.12.
