@@ -1,29 +1,29 @@
-# Bambu AMS Monitoring
+# HaspelSync for Home Assistant
 
-A Home Assistant custom integration. It toggles the monitoring state of an external backend, [bambulab-ams-spoolman-filamentstatus](https://github.com/Rdiger-36/bambulab-ams-spoolman-filamentstatus), and mirrors what that backend knows about a printer: its AMS slots, its AMS units and its current print. It holds no printer logic of its own: every state it shows comes from that backend over HTTP.
+A Home Assistant custom integration. It toggles the monitoring state of an external backend, [HaspelSync](https://github.com/Rdiger-36/HaspelSync), called bambulab-ams-spoolman-filamentstatus before its 1.3.0, and mirrors what that backend knows about a printer: its AMS slots, its AMS units and its current print. It holds no printer logic of its own: every state it shows comes from that backend over HTTP.
 
 ## Intent Layer
 
 **Before modifying code in a subdirectory, read its AGENTS.md first** to understand local patterns and invariants.
 
-The whole integration is roughly 5k tokens in a single package, so it carries no child nodes. Add one under `custom_components/bambu_ams_monitoring/` only if that package grows past 20k tokens.
+The whole integration is roughly 5k tokens in a single package, so it carries no child nodes. Add one under `custom_components/haspelsync/` only if that package grows past 20k tokens.
 
 ## Entry Points
 
 | File | Role |
 |------|------|
-| `custom_components/bambu_ams_monitoring/__init__.py` | Sets up and unloads a config entry, repairs stored printer IDs, migrates entity unique IDs |
-| `custom_components/bambu_ams_monitoring/api.py` | Auth header and the printer list read, shared by both flows and the setup |
-| `custom_components/bambu_ams_monitoring/config_flow.py` | Two step setup: base URL and API key, then printer selection, plus the reauth step |
-| `custom_components/bambu_ams_monitoring/options_flow.py` | Edits the printer selection of an existing entry, and replaces its API key when the key field is filled in |
-| `custom_components/bambu_ams_monitoring/coordinator.py` | One `DataUpdateCoordinator` per printer, polls status, spools and print job |
-| `custom_components/bambu_ams_monitoring/entity.py` | Entity bases for a printer, an AMS unit and a slot, plus the discovery helper |
-| `custom_components/bambu_ams_monitoring/switch.py` | One `SwitchEntity` per configured printer |
-| `custom_components/bambu_ams_monitoring/sensor.py` | Printer, AMS unit and slot sensors |
-| `custom_components/bambu_ams_monitoring/binary_sensor.py` | Connection, attention, storage, sliced file, drying and slot state binary sensors |
-| `custom_components/bambu_ams_monitoring/button.py` | Clear print result and reconnect buttons per printer |
-| `custom_components/bambu_ams_monitoring/const.py` | Domain, config keys, platform list and polling constants |
-| `custom_components/bambu_ams_monitoring/translations/` | English and German strings, keys must match the step and error IDs in both flows |
+| `custom_components/haspelsync/__init__.py` | Sets up and unloads a config entry, repairs stored printer IDs, migrates entity unique IDs |
+| `custom_components/haspelsync/api.py` | Auth header and the printer list read, shared by both flows and the setup |
+| `custom_components/haspelsync/config_flow.py` | Two step setup: base URL and API key, then printer selection, plus the reauth step |
+| `custom_components/haspelsync/options_flow.py` | Edits the printer selection of an existing entry, and replaces its API key when the key field is filled in |
+| `custom_components/haspelsync/coordinator.py` | One `DataUpdateCoordinator` per printer, polls status, spools and print job |
+| `custom_components/haspelsync/entity.py` | Entity bases for a printer, an AMS unit and a slot, plus the discovery helper |
+| `custom_components/haspelsync/switch.py` | One `SwitchEntity` per configured printer |
+| `custom_components/haspelsync/sensor.py` | Printer, AMS unit and slot sensors |
+| `custom_components/haspelsync/binary_sensor.py` | Connection, attention, storage, sliced file, drying and slot state binary sensors |
+| `custom_components/haspelsync/button.py` | Clear print result and reconnect buttons per printer |
+| `custom_components/haspelsync/const.py` | Domain, config keys, platform list and polling constants |
+| `custom_components/haspelsync/translations/` | English and German strings, keys must match the step and error IDs in both flows |
 
 ## Backend Contract
 
@@ -61,6 +61,7 @@ The backend upper cases every printer serial it stores, and it resolves `<id>` b
 - The device identifier stays `(DOMAIN, printer_id)`, so all instances holding one printer attach to a single device. An AMS unit is a device of its own, `(DOMAIN, f"{printer_id}_ams_{unit}")` with the printer as `via_device`, built by `ams_device_info()` in `entity.py`. Its readings and the slots of the unit attach to it, the external holders stay on the printer.
 - Nothing aborts on a duplicate: neither a base URL that is already configured nor a printer that another entry already holds.
 - Changing a unique ID scheme or an ID stored in an entry requires a migration in `__init__.py`. Without one, existing installations lose their entity ID and their history.
+- The domain is `haspelsync` and stays so. It was `bambu_ams_monitoring` before 1.2.0, and that rename cost every installation a manual reinstall, because Home Assistant cannot move a config entry between domains and no migration can run on an entry of a domain that no longer exists. The entity keys kept their old names across it, `ams_monitoring` for the switch for example, so the entity IDs a reinstall produces equal the old ones and the recorder history continues.
 - A 401 is not a connection problem and is never retried into one. Everything that talks to the backend turns it into `ConfigEntryAuthFailed`, which is what puts the reauth step in front of the user. An entry set up before the backend asked for a key holds none, so this is also the upgrade path of every existing installation.
 - The API key field of the options flow is empty on every render and the stored key is never put into it. An empty field means the stored key is kept, so it can never mean the key was cleared, and a screenshot of that dialog carries no secret.
 - The API key is optional in the stored entry data and read with `entry.data.get()`. An entry written before it existed carries no key, and a backend older than 1.3.0 needs none.
@@ -129,7 +130,7 @@ Adding a flow step: add the step ID and every data key to both `translations/en.
 
 ## Releasing
 
-`.github/workflows/release.yml` publishes on a `vX.Y.Z` tag and refuses one whose version does not equal `manifest.json` `version`, so bump the manifest in the same change that will be tagged. A suffix such as `1.0.2-rc.1` is published as a pre-release. The release is titled `Version X.Y.Z`, which is how every release of this repository is named, and a pre-release carries `(DEV)` behind it. No archive is attached: HACS installs this repository by copying `custom_components/bambu_ams_monitoring` out of the tag, and an asset it never reads only suggests otherwise.
+`.github/workflows/release.yml` publishes on a `vX.Y.Z` tag and refuses one whose version does not equal `manifest.json` `version`, so bump the manifest in the same change that will be tagged. A suffix such as `1.0.2-rc.1` is published as a pre-release. The release is titled `Version X.Y.Z`, which is how every release of this repository is named, and a pre-release carries `(DEV)` behind it. No archive is attached: HACS installs this repository by copying `custom_components/haspelsync` out of the tag, and an asset it never reads only suggests otherwise.
 
 Label every pull request when it is opened, and in any case before it is merged: `enhancement`, `bug`, `deprecation`, `documentation` or `maintenance` (refactor, build, CI, dependencies, version bump), with `ignore-for-release` to leave one out entirely. A pull request that does two things takes both labels and is listed once, under whichever section comes first. `breaking` goes on top of one of those whenever an existing installation can stop working the way it did, a caller that suddenly needs credentials for example. The generated notes are grouped by `.github/release.yml` in the same order as the backend's: Breaking Changes, New Features, Fixes, Deprecations, Documentation, Maintenance. An unlabelled pull request is not lost, it lands under Other Changes, which is where the whole of Version 1.0.2 ended up. A label added after the merge changes nothing about notes that are already written.
 
@@ -139,10 +140,10 @@ Label every pull request when it is opened, and in any case before it is merged:
 
 There is no test suite and the code cannot run outside Home Assistant. Before handing work over:
 
-1. `python3 -m py_compile custom_components/bambu_ams_monitoring/*.py`
+1. `python3 -m py_compile custom_components/haspelsync/*.py`
 2. Load the integration in a real Home Assistant, check the log for the ID repair line, toggle a switch, then add a second instance holding the same printer and confirm both switches appear and follow each other.
 3. Reach the backend directly to tell an integration bug from a backend one: `curl -H "Authorization: Bearer ams_<key>" http://<backend>:4000/api/printers`. Without the header a backend from 1.3.0 on answers 401, which says nothing about the integration.
 
 ## Related Context
 
-- Backend repository, its own AGENTS.md and `src/routes.js` define every endpoint used here: https://github.com/Rdiger-36/bambulab-ams-spoolman-filamentstatus
+- Backend repository, its own AGENTS.md and `src/routes.js` define every endpoint used here: https://github.com/Rdiger-36/HaspelSync

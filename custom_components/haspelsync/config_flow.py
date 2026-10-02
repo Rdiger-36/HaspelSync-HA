@@ -17,7 +17,7 @@ from .const import (
 
 
 class AmsManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Config flow for the Bambu AMS Monitoring integration.
+    """Config flow for the HaspelSync integration.
 
     A printer may be configured in more than one integration instance, and the
     same backend may be added more than once. Printer IDs are therefore always
@@ -107,7 +107,7 @@ class AmsManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         printer_map = {p["id"]: p["name"] for p in self._printers_raw}
 
         return self.async_create_entry(
-            title=f"Bambu AMS Monitoring ({self._base_url})",
+            title=f"HaspelSync ({self._base_url})",
             data={
                 CONF_BASE_URL: self._base_url,
                 CONF_API_KEY: self._api_key,

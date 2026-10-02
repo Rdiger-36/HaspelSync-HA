@@ -1,16 +1,16 @@
 <p align="center">
-  <img src="custom_components/bambu_ams_monitoring/icon.png" width="120" alt="Bambu AMS Monitoring icon" />
+  <img src="custom_components/haspelsync/icon.png" width="120" alt="HaspelSync icon" />
 </p>
 
-<h1 align="center">Bambu AMS Monitoring</h1>
+<h1 align="center">HaspelSync for Home Assistant</h1>
 
 <p align="center">
-  A custom Home Assistant integration to monitor and control your Bambu Lab AMS filament status.<br/>
-  Connects to the <a href="https://github.com/Rdiger-36/bambulab-ams-spoolman-filamentstatus">bambulab-ams-spoolman-filamentstatus</a> backend with a simple toggle switch per printer.
+  The Home Assistant integration for <a href="https://github.com/Rdiger-36/HaspelSync">HaspelSync</a>.<br/>
+  Brings your Bambu Lab AMS slots, units and prints into Home Assistant, with a monitoring switch per printer.
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus?style=flat-square&label=version&color=blue" alt="version" />
+  <img src="https://img.shields.io/github/v/release/Rdiger-36/HaspelSync-HA?style=flat-square&label=version&color=blue" alt="version" />
   <img src="https://img.shields.io/badge/HACS-Custom-orange?style=flat-square&logo=home-assistant&logoColor=white" alt="HACS" />
   <img src="https://img.shields.io/badge/Home%20Assistant-compatible-41BDF5?style=flat-square&logo=home-assistant&logoColor=white" alt="Home Assistant" />
   <img src="https://img.shields.io/badge/license-GPL--3.0-green?style=flat-square" alt="license" />
@@ -18,15 +18,15 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/stars/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus?style=flat-square&color=yellow" alt="stars" />
-  <img src="https://img.shields.io/github/forks/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus?style=flat-square&color=orange" alt="forks" />
-  <img src="https://img.shields.io/github/issues/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus?style=flat-square" alt="open issues" />
-  <img src="https://img.shields.io/github/last-commit/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus?style=flat-square&label=last%20commit" alt="last commit" />
+  <img src="https://img.shields.io/github/stars/Rdiger-36/HaspelSync-HA?style=flat-square&color=yellow" alt="stars" />
+  <img src="https://img.shields.io/github/forks/Rdiger-36/HaspelSync-HA?style=flat-square&color=orange" alt="forks" />
+  <img src="https://img.shields.io/github/issues/Rdiger-36/HaspelSync-HA?style=flat-square" alt="open issues" />
+  <img src="https://img.shields.io/github/last-commit/Rdiger-36/HaspelSync-HA?style=flat-square&label=last%20commit" alt="last commit" />
 </p>
 
 ---
 
-> **Note:** This integration depends on a working [bambulab-ams-spoolman-filamentstatus](https://github.com/Rdiger-36/bambulab-ams-spoolman-filamentstatus) environment.
+> **Note:** This integration depends on a running [HaspelSync](https://github.com/Rdiger-36/HaspelSync) installation. Every state it shows comes from there.
 
 ## Features
 
@@ -45,7 +45,7 @@
 
 | Requirement | Description |
 |---|---|
-| [bambulab-ams-spoolman-filamentstatus](https://github.com/Rdiger-36/bambulab-ams-spoolman-filamentstatus) | The backend service this integration connects to |
+| [HaspelSync](https://github.com/Rdiger-36/HaspelSync) | The service this integration connects to, called the backend below. Known as bambulab-ams-spoolman-filamentstatus before 1.3.0 |
 | An API key of that backend | Backend 1.3.0 and newer answers its API only to the Web UI and to callers carrying a key. Create one on the settings page of the backend, under **Network access** |
 | [Spoolman](https://github.com/Donkie/Spoolman) | Filament management service |
 | [HACS](https://hacs.xyz/) | Required for installation in Home Assistant |
@@ -53,16 +53,27 @@
 
 ## Installation
 
-To use this integration you need HACS. Copy the repository URL and add it as a custom repository in HACS. Then search for **Bambu AMS Monitoring** and install the integration.
+To use this integration you need HACS. Copy the repository URL and add it as a custom repository in HACS. Then search for **HaspelSync** and install the integration.
 
 ```
-https://github.com/Rdiger-36/ha-bambulab-ams-spoolman-filamentstatus
+https://github.com/Rdiger-36/HaspelSync-HA
 ```
+
+## Updating from Bambu AMS Monitoring
+
+This integration was called Bambu AMS Monitoring before version 1.2.0, and HaspelSync was called bambulab-ams-spoolman-filamentstatus before its 1.3.0. The rename changed the domain of the integration from `bambu_ams_monitoring` to `haspelsync`, and Home Assistant cannot move a configured integration from one domain to another, so the update is done by hand once:
+
+1. Go to **Settings → Devices & Services**, open **Bambu AMS Monitoring** and delete every entry it has
+2. In HACS, remove the Bambu AMS Monitoring repository and add this one as a custom repository, then install **HaspelSync**
+3. If `custom_components/bambu_ams_monitoring` is still on disk afterwards, delete the folder and restart Home Assistant
+4. Set up **HaspelSync** as described under Setup, with the same backend URL and printers
+
+The entity IDs are built from the printer name and come out the same as before, `switch.ams_monitoring_<printer_name>` and `sensor.<printer>_print_state` for example, as long as the old entries were deleted first. Dashboards and automations keep working, and the recorder continues the history under the same IDs. The config entry itself, its API key and anything renamed by hand in the entity settings do not carry over.
 
 ## Setup
 
 1. Go to **Settings → Devices & Services**
-2. Click **Add Integration** and search for `Bambu AMS Monitoring`
+2. Click **Add Integration** and search for `HaspelSync`
 3. Enter the base URL of your backend, for example:
    ```
    http://192.168.1.100:4000
@@ -80,7 +91,7 @@ A backend older than 1.3.0 does not know API keys and ignores the one sent to it
 After setup, you can edit the printer selection and the API key at any time:
 
 1. Go to **Settings → Devices & Services**
-2. Find **Bambu AMS Monitoring** and click **Configure**
+2. Find **HaspelSync** and click **Configure**
 3. Adjust your printer selection and save
 
 The key field of that dialog starts empty and the stored key is never shown. Leave it empty to keep the key the integration already holds, and fill it in only to replace it, for example after the key was revoked in the backend. A key the backend rejects is not saved, so the form comes back with the error rather than leaving the integration with a key that cannot work.
@@ -185,5 +196,5 @@ The integration reloads automatically after saving. If not, restart Home Assista
 
 ## Related Projects
 
-* [bambulab-ams-spoolman-filamentstatus](https://github.com/Rdiger-36/bambulab-ams-spoolman-filamentstatus): the backend this integration depends on
+* [HaspelSync](https://github.com/Rdiger-36/HaspelSync): the service this integration depends on
 * [Spoolman](https://github.com/Donkie/Spoolman): filament inventory management

@@ -2,8 +2,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "Bambu AMS Monitoring: Setup",
-        "description": "Enter the base URL of your Bambu AMS Monitoring backend and an API key. Create the key on the settings page of the backend, under \"Network access\".",
+        "title": "HaspelSync: Setup",
+        "description": "Enter the base URL of your HaspelSync installation and an API key. Create the key on the settings page of the backend, under \"Network access\".",
         "data": {
           "base_url": "Base URL",
           "api_key": "API key"
@@ -17,7 +17,7 @@
         }
       },
       "reauth_confirm": {
-        "title": "Bambu AMS Monitoring: New API Key",
+        "title": "HaspelSync: New API Key",
         "description": "The backend at {base_url} no longer accepts the API key of this integration. Create a new key under \"Network access\" on its settings page and enter it here.",
         "data": {
           "api_key": "API key"

@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-DOMAIN = "bambu_ams_monitoring"
+DOMAIN = "haspelsync"
 
 CONF_BASE_URL = "base_url"
 CONF_PRINTERS = "printers"

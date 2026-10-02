@@ -1,0 +1,14 @@
+{
+  "domain": "haspelsync",
+  "name": "HaspelSync",
+  "codeowners": [
+    "@Rdiger-36"
+  ],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/Rdiger-36/HaspelSync-HA",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/Rdiger-36/HaspelSync-HA/issues",
+  "requirements": [],
+  "version": "1.2.0-dev.3"
+}
