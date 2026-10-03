@@ -45,8 +45,8 @@
 
 | Requirement | Description |
 |---|---|
-| [HaspelSync](https://github.com/Rdiger-36/HaspelSync) | The service this integration connects to, called the backend below. Known as bambulab-ams-spoolman-filamentstatus before 1.3.0 |
-| An API key of that backend | Backend 1.3.0 and newer answers its API only to the Web UI and to callers carrying a key. Create one on the settings page of the backend, under **Network access** |
+| [HaspelSync](https://github.com/Rdiger-36/HaspelSync) 1.3.0 or newer | The service this integration connects to, called the backend below. Known as bambulab-ams-spoolman-filamentstatus before 1.3.0. Older versions hand out neither API keys nor the tray details and the active slot this integration reads |
+| An API key of that backend | The backend answers its API only to its Web UI and to callers carrying a key. Create one on the settings page of the backend, under **Network access** |
 | [Spoolman](https://github.com/Donkie/Spoolman) | Filament management service |
 | [HACS](https://hacs.xyz/) | Required for installation in Home Assistant |
 | Home Assistant 2024.11 or newer | Older versions do not provide the config entry to the options flow, so editing the printer selection fails |
@@ -84,8 +84,6 @@ The entity IDs are built from the printer name and come out the same as before, 
 5. Select the printer(s) you want to monitor
 6. Enjoy your toggle switch
 
-A backend older than 1.3.0 does not know API keys and ignores the one sent to it, so the field can be filled with anything there.
-
 ## Configuration
 
 After setup, you can edit the printer selection and the API key at any time:
@@ -105,11 +103,11 @@ Per printer:
 | Entity | Description |
 |---|---|
 | `switch.ams_monitoring_<printer_name>` | Enables or disables filament monitoring for this printer |
-| `sensor.<printer>_print_state` | The G-code state, with job name, layers and the grams per filament the print needs and has used so far as attributes |
-| `sensor.<printer>_active_slot` | The slot feeding the printing nozzle, with its filament as attributes. Appears only once the backend reports the active slot, which no release does yet |
-| `sensor.<printer>_last_print` | How the last print ended, with its duration, error and what was booked on which spool as attributes |
+| `sensor.<printer>_print_state` | The G-code state, with job name, model title, layers and the grams per filament the print needs and has used so far as attributes |
+| `sensor.<printer>_active_slot` | The slot feeding the printing nozzle, with its filament as attributes. Empty while nothing is loaded |
+| `sensor.<printer>_last_print` | How the last print ended, with its duration, what was booked on which spool and the printer's error as attributes. The error comes as the English log line and, under `error_details`, as Bambu Lab's sentence in the language of Home Assistant |
 | `sensor.<printer>_print_progress` | The print progress in percent, derived from the layer count |
-| `sensor.<printer>_print_stage` | What the printer is doing, for example heating the bed, while a print is active |
+| `sensor.<printer>_print_stage` | What the printer is doing, for example heating the bed, while a print is active, with the stage number as an attribute |
 | `sensor.<printer>_print_time_remaining` | Minutes the printer still expects to need |
 | `sensor.<printer>_print_start` | When the backend first saw the print running |
 | `sensor.<printer>_print_end` | The expected end, empty while paused |
@@ -121,7 +119,7 @@ Per printer:
 | `binary_sensor.<printer>_needs_attention` | On when any slot reports an error or waits for an action, with the slot list as attributes |
 | `binary_sensor.<printer>_usb_stick_or_sd_card_missing` | On when the printer reports no storage. The sliced file is read from it, so nothing is booked without it |
 | `binary_sensor.<printer>_sliced_file_missing` | On when the backend could not read the sliced file of the running job, with the reason as an attribute |
-| `button.<printer>_clear_print_result` | Clears a finished print at once instead of after its countdown, refused while a print is active |
+| `button.<printer>_clear_print_result` | Clears a finished print at once instead of after its countdown. Refused while a print is active, which is reported in the language of Home Assistant |
 | `button.<printer>_reconnect_printers` | Rebuilds the MQTT connections of every printer of the backend without a restart |
 
 Per AMS unit, for example A, on the device of that unit:
@@ -152,7 +150,7 @@ The slot sensor carries the attributes ha-bambulab gives a tray under the same n
 | Attributes | Source |
 |---|---|
 | `active`, `empty`, `name`, `type`, `color`, `colors`, `filament_id`, `remain`, `tray_weight`, `tray_uuid` | What the AMS reports for the slot. Colours as `#RRGGBB` |
-| `tag_uid`, `tray_diameter`, `nozzle_temp_min`, `nozzle_temp_max`, `bed_temp`, `dry_temp`, `dry_time`, `k_value` | The RFID tag and the printer's filament table. Empty on a backend that does not hand them out yet |
+| `tag_uid`, `tray_diameter`, `nozzle_temp_min`, `nozzle_temp_max`, `bed_temp`, `dry_temp`, `dry_time`, `k_value` | The RFID tag and the printer's filament table. Empty where the printer reports nothing, `k_value` and `bed_temp` on most slots for example |
 | `preset_name`, `preset_vendor`, `sub_brand` | The filament profile, learned by the backend from a sliced file |
 | `remaining_weight`, `remaining_percentage`, `total_weight` | The figure the backend dashboard shows |
 | `spool_id`, `spoolman_filament_id`, `spoolman_initial_weight`, `spoolman_filament_weight`, `spoolman_color`, `spoolman_colors` | The linked Spoolman spool |

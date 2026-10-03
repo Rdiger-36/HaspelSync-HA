@@ -6,6 +6,16 @@ from .api import BackendUnreachable, async_post_action
 from .const import DOMAIN, DATA_COORDINATORS
 from .entity import AmsEntity
 
+# The error codes a refused action can carry, mapped to the translation key
+# that words them, with the placeholders the backend sends as `params`. From
+# 1.3.0 on a failed answer carries `code` and `params` next to its English
+# sentence, for exactly this: a client wording the refusal in its own language.
+# A code not listed here falls back to the sentence of the backend.
+_WORDED_ERRORS = {
+    "clearWhilePrinting": ("clear_while_printing", ("printer", "state")),
+    "printerNotFound": ("printer_not_found", ()),
+}
+
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Sets up the clear and reconnect buttons of every configured printer."""
@@ -47,9 +57,21 @@ class AmsActionButton(AmsEntity, ButtonEntity):
             await coordinator.async_request_refresh()
 
         if status != 200 or body.get("ok") is False:
+            worded = _WORDED_ERRORS.get(body.get("code"))
+            if worded:
+                key, names = worded
+                params = body.get("params") or {}
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key=key,
+                    # Every placeholder has to be present, or the message is
+                    # not rendered at all, so a missing value reads empty.
+                    translation_placeholders={name: str(params.get(name) or "") for name in names},
+                )
+
             message = body.get("error") or body.get("message") or f"HTTP {status}"
-            # The backend's own reason stays in English: it is the sentence the
-            # backend writes, and only the frame around it is translated.
+            # A reason without a known code stays in English: it is the
+            # sentence the backend writes, and only the frame is translated.
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="action_refused",

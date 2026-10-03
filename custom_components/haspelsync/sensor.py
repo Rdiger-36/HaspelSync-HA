@@ -87,6 +87,28 @@ def _active_slot_attributes(coordinator: AmsPrinterCoordinator) -> dict:
     }
 
 
+def _print_error_details(coordinator: AmsPrinterCoordinator, parts) -> list:
+    """The parts of a print error, each worded in the language of Home Assistant.
+
+    The backend sends Bambu Lab's sentence for a code in every language it
+    ships, keyed by language code. The one matching the Home Assistant language
+    is picked, English where that language is not shipped, and the code stays
+    next to it for an automation that compares rather than reads.
+    """
+    language = (coordinator.hass.config.language or "en").split("-")[0].lower()
+    details = []
+    for part in parts or []:
+        if not isinstance(part, dict):
+            continue
+        texts = part.get("texts") or {}
+        details.append({
+            "kind": part.get("kind"),
+            "code": part.get("code"),
+            "text": texts.get(language) or texts.get("en"),
+        })
+    return details
+
+
 def _last_print_attributes(coordinator: AmsPrinterCoordinator) -> dict:
     """The closing report of the last print: what was booked where."""
     summary = coordinator.print_job.get("lastPrintSummary") or {}
@@ -98,7 +120,10 @@ def _last_print_attributes(coordinator: AmsPrinterCoordinator) -> dict:
         "duration_minutes": round(duration / 60000) if duration else None,
         "layer": summary.get("layerNum"),
         "total_layers": summary.get("totalLayers"),
+        # The English line of the backend log, kept as it is for an automation
+        # that already reads it. The worded parts follow in the HA language.
         "error": summary.get("printError"),
+        "error_details": _print_error_details(coordinator, summary.get("printErrorDetails")),
         "note": summary.get("note"),
         "bookings": [
             {
@@ -122,6 +147,9 @@ PRINTER_SENSORS: tuple[AmsPrinterSensorDescription, ...] = (
         value=lambda c: c.status.get("gcodeState"),
         attributes=lambda c: {
             "job_name": c.print_job.get("jobName"),
+            # Set when the job is named after a MakerWorld print profile rather
+            # than after the model, which is when the job name says nothing.
+            "model_title": c.print_job.get("modelTitle"),
             "layer": c.print_job.get("layerNum"),
             "total_layers": c.print_job.get("totalLayers"),
             "consumption_booked": c.print_job.get("consumptionBooked"),
@@ -137,7 +165,12 @@ PRINTER_SENSORS: tuple[AmsPrinterSensorDescription, ...] = (
         translation_key="print_stage",
         icon="mdi:list-status",
         value=lambda c: c.print_job.get("stage"),
-        attributes=lambda c: {"preparing": c.print_job.get("preparing")},
+        attributes=lambda c: {
+            "preparing": c.print_job.get("preparing"),
+            # The number the printer reports for the stage, for an automation
+            # that compares rather than reads the words.
+            "stage_code": c.print_job.get("stageCode"),
+        },
     ),
     AmsPrinterSensorDescription(
         key="print_remaining_time",
@@ -167,6 +200,14 @@ PRINTER_SENSORS: tuple[AmsPrinterSensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         value=_progress,
+    ),
+    AmsPrinterSensorDescription(
+        key="active_slot",
+        translation_key="active_slot",
+        icon="mdi:printer-3d-nozzle-outline",
+        # Null while nothing is loaded, which reads as unknown here.
+        value=lambda c: c.status.get("activeSlot"),
+        attributes=lambda c: _active_slot_attributes(c),
     ),
     AmsPrinterSensorDescription(
         key="last_print",
@@ -203,17 +244,6 @@ PRINTER_SENSORS: tuple[AmsPrinterSensorDescription, ...] = (
 )
 
 
-# Not among PRINTER_SENSORS: only a backend that reports activeSlot gets it,
-# see async_setup_entry().
-ACTIVE_SLOT_SENSOR = AmsPrinterSensorDescription(
-    key="active_slot",
-    translation_key="active_slot",
-    icon="mdi:printer-3d-nozzle-outline",
-    value=lambda c: c.status.get("activeSlot"),
-    attributes=lambda c: _active_slot_attributes(c),
-)
-
-
 async def async_setup_entry(hass, entry, async_add_entities):
     """Sets up the printer, AMS unit and slot sensors of this entry."""
     coordinators = hass.data[DOMAIN][entry.entry_id][DATA_COORDINATORS]
@@ -226,18 +256,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities(entities)
 
     for coordinator in coordinators.values():
-        # Created once the backend carries the field at all, rather than at
-        # setup: a backend that does not report it yet would leave a sensor
-        # that reads unknown forever, and one that is down at setup says
-        # nothing either way. Discovered like a unit, so an updated backend
-        # brings the sensor without a reload.
-        async_track_members(
-            entry,
-            coordinator,
-            async_add_entities,
-            lambda c=coordinator: {ACTIVE_SLOT_SENSOR.key} if "activeSlot" in c.status else set(),
-            lambda _key, c=coordinator: [AmsPrinterSensor(c, ACTIVE_SLOT_SENSOR)],
-        )
         async_track_members(
             entry,
             coordinator,
@@ -483,7 +501,6 @@ class AmsSlotSensor(AmsSlotEntity, SensorEntity):
 
         spool = slot.get("existingSpool") or {}
         filament = spool.get("filament") or {}
-        status = self.coordinator.status
 
         # The names ha-bambulab gives the same values where it has them, so a
         # card written for one reads the other. What the tag and the printer's
@@ -491,9 +508,7 @@ class AmsSlotSensor(AmsSlotEntity, SensorEntity):
         # after it under a spoolman_ prefix.
         return {
             "ams_slot": self._ams_id,
-            # None rather than False on a backend that does not report it, so
-            # an automation cannot read "not active" where nothing is known.
-            "active": status["activeSlot"] == self._ams_id if "activeSlot" in status else None,
+            "active": self.coordinator.status.get("activeSlot") == self._ams_id,
             "empty": slot.get("slotState") == "Empty",
             "slot_state": slot.get("slotState"),
             "name": slot.get("filamentName"),
