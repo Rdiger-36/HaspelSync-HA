@@ -151,6 +151,12 @@
     },
     "action_refused": {
       "message": "The backend refused the action: {message}"
+    },
+    "clear_while_printing": {
+      "message": "{printer} is printing ({state}). The result can be cleared once the job has ended."
+    },
+    "printer_not_found": {
+      "message": "The backend does not know this printer. Check the printer selection of the integration."
     }
   }
 }

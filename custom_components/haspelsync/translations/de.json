@@ -151,6 +151,12 @@
     },
     "action_refused": {
       "message": "Das Backend hat die Aktion abgelehnt: {message}"
+    },
+    "clear_while_printing": {
+      "message": "{printer} druckt gerade ({state}). Das Ergebnis kann gelöscht werden, sobald der Druck beendet ist."
+    },
+    "printer_not_found": {
+      "message": "Das Backend kennt diesen Drucker nicht. Prüfe die Druckerauswahl der Integration."
     }
   }
 }
